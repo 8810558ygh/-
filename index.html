@@ -571,7 +571,7 @@
 
   /* ========== 三个模式跳转函数 ========== */
   function enterAIGame() {
-    window.location.href = 'ai_game.html';
+    window.location.href = '五子棋AI.html';
   }
 
   function enterLocalGame() {
@@ -590,7 +590,7 @@
       params.set('email', currentUser.email);
     }
     
-    let targetPage = connMode === 'p2p' ? '五子棋1.html' : 'game_supa.html';
+    let targetPage = connMode === 'p2p' ? '五子棋P2P.html' : 'game_supa.html';
     window.location.href = targetPage + '?' + params.toString();
   }
 

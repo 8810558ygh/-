@@ -1,0 +1,1233 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>东南五子 · 人机对弈</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Noto Serif SC', '楷体', 'KaiTi', serif; }
+    body {
+      background: #2b1e0f;
+      background-image: radial-gradient(circle at 25% 40%, rgba(210, 160, 90, 0.08) 2%, transparent 2.5%);
+      background-size: 48px 48px;
+      min-height: 100vh;
+      color: #ecd9b4;
+    }
+    .hidden { display: none !important; }
+    .toast {
+      position: fixed; bottom: 30px; left: 50%;
+      transform: translateX(-50%) translateY(100px);
+      background: rgba(30, 20, 10, 0.96);
+      backdrop-filter: blur(8px);
+      color: #f5c542;
+      border: 1px solid rgba(245, 197, 66, 0.5);
+      padding: 12px 28px; border-radius: 40px;
+      font-size: 0.9rem; z-index: 10000;
+      opacity: 0; transition: 0.3s; pointer-events: none; white-space: nowrap;
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    .top-bar {
+      position: fixed; top: 0; left: 0; right: 0; height: 60px;
+      background: rgba(25, 18, 10, 0.85); backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(230, 190, 110, 0.3);
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 28px; z-index: 100;
+    }
+    .logo { font-family: 'Orbitron', monospace; font-size: 1.2rem; font-weight: 700; color: #e9bc6e; letter-spacing: 2px; }
+    .top-right { display: flex; gap: 16px; align-items: center; }
+    .top-btn {
+      background: rgba(200, 160, 100, 0.2); border: 1px solid #e9bc6e;
+      border-radius: 40px; padding: 6px 16px; cursor: pointer; font-size: 0.85rem;
+      color: #ecd9b4; transition: 0.2s;
+    }
+    .top-btn:hover { background: rgba(200, 160, 100, 0.35); }
+
+    /* ===== 设置界面 ===== */
+    #setupScreen {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: #1a120a; z-index: 2000;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      padding: 20px;
+    }
+    .setup-title {
+      font-size: 2.5rem; font-weight: 900; color: #e9bc6e;
+      text-shadow: 0 0 30px rgba(233, 188, 110, 0.4);
+      margin-bottom: 30px; letter-spacing: 4px; text-align: center;
+    }
+    .setup-section {
+      background: rgba(30, 22, 14, 0.9); border: 1px solid rgba(189, 154, 96, 0.3);
+      border-radius: 20px; padding: 24px 32px; margin-bottom: 20px;
+      width: 90%; max-width: 480px;
+    }
+    .setup-section-title {
+      font-size: 1.1rem; color: #bd9a60; margin-bottom: 16px; text-align: center;
+    }
+    .color-choice {
+      display: flex; gap: 20px; justify-content: center;
+    }
+    .color-card {
+      width: 140px; padding: 20px; border-radius: 16px;
+      border: 2px solid rgba(189, 154, 96, 0.3);
+      cursor: pointer; text-align: center; transition: all 0.3s;
+      background: rgba(40, 30, 20, 0.8);
+    }
+    .color-card:hover { transform: translateY(-4px); border-color: rgba(189, 154, 96, 0.6); }
+    .color-card.selected {
+      border-color: #e9bc6e; box-shadow: 0 0 25px rgba(233, 188, 110, 0.3);
+      background: rgba(233, 188, 110, 0.1);
+    }
+    .color-card .stone-icon {
+      width: 50px; height: 50px; border-radius: 50%; margin: 0 auto 12px;
+    }
+    .color-card.black .stone-icon { background: radial-gradient(circle at 30% 30%, #6d5a4a, #1a120a); }
+    .color-card.white .stone-icon { background: radial-gradient(circle at 30% 30%, #ffffff, #c8bca6); }
+    .color-card div:last-child { font-size: 1.1rem; font-weight: bold; }
+
+    .ai-info { display: none; }
+    .ai-learn-info { display: none; }
+
+    .start-btn {
+      width: 90%; max-width: 480px; padding: 16px;
+      background: linear-gradient(145deg, #c89d60, #8f6a30);
+      border: none; border-radius: 30px; font-size: 1.2rem; font-weight: bold;
+      color: #1e160c; cursor: pointer; margin-top: 10px;
+      transition: 0.2s; letter-spacing: 2px;
+    }
+    .start-btn:hover { filter: brightness(1.15); transform: scale(1.02); }
+
+    /* ===== 游戏界面 ===== */
+    #gameScreen { padding-top: 70px; min-height: 100vh; }
+    .game-container {
+      display: flex; width: 100%; margin: 0; background: #1f160e;
+      min-height: calc(100vh - 70px);
+    }
+    .board-panel {
+      flex: 3; display: flex; justify-content: center; align-items: center;
+      padding: 15px; min-width: 0;
+    }
+    .board-wrap {
+      background: #e1c394; padding: 15px; border-radius: 24px;
+      box-shadow: 0 20px 35px rgba(0,0,0,0.5); width: 100%; max-width: 920px;
+    }
+    canvas {
+      display: block; border-radius: 16px; background: #eedbbc;
+      cursor: pointer; width: 100%; height: auto;
+    }
+    .side-panel {
+      flex: 1; background: rgba(30, 22, 14, 0.9); backdrop-filter: blur(6px);
+      border-left: 1px solid #bd9a60; display: flex; flex-direction: column;
+      min-width: 320px; max-width: 400px; height: calc(100vh - 70px);
+    }
+    .game-info {
+      padding: 18px 16px; border-bottom: 2px solid #5e4a31;
+      font-size: 1.05rem; line-height: 1.8;
+    }
+    .mode-badge {
+      display: inline-block;
+      background: rgba(245, 197, 66, 0.15);
+      border: 1px solid rgba(245, 197, 66, 0.4);
+      color: #f5c542;
+      padding: 2px 12px;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      margin-left: 8px;
+    }
+    .ai-level-badge { display: none; }
+    .mini-players { display: flex; gap: 12px; margin-top: 14px; }
+    .mini-card {
+      flex: 1; background: #2b211a; border-radius: 16px; padding: 12px 8px;
+      text-align: center; border: 2px solid transparent; transition: 0.3s; font-size: 0.95rem;
+    }
+    .mini-card.active-black { border-color: #e0816b; box-shadow: 0 0 15px rgba(224, 129, 107, 0.25); background: #3d2218; }
+    .mini-card.active-white { border-color: #6c9fd1; box-shadow: 0 0 15px rgba(108, 159, 209, 0.25); background: #1e2a3d; }
+    .mini-card div:first-child { font-weight: bold; margin-bottom: 4px; }
+    .mini-card div:last-child { font-weight: 700; color: #e9bc6e; }
+    .turn-indicator {
+      font-weight: 800; margin: 14px 0 8px; font-size: 1.5rem; color: #f5c542;
+      text-shadow: 0 0 12px rgba(245, 197, 66, 0.4); text-align: center;
+      padding: 8px; background: rgba(245, 197, 66, 0.08); border-radius: 12px;
+      border: 1px solid rgba(245, 197, 66, 0.2);
+    }
+    #winnerMessage { color: #e9bc6e; font-size: 1.1rem; font-weight: bold; text-align: center; margin-top: 6px; min-height: 1.5em; }
+    .action-area {
+      padding: 16px; border-bottom: 1px solid #5e4a31;
+      display: flex; flex-direction: column; gap: 10px;
+    }
+    .game-btn {
+      background: linear-gradient(145deg, #c89d60, #8f6a30);
+      border: none; border-radius: 30px; padding: 10px;
+      font-weight: bold; cursor: pointer; color: #1e160c; font-size: 0.95rem;
+      transition: 0.15s;
+    }
+    .game-btn:hover { filter: brightness(1.1); }
+    .game-btn:disabled { background: #5a4a3a; color: #888; cursor: not-allowed; opacity: 0.5; }
+    .game-btn.secondary { background: transparent; border: 1px solid #bd9a60; color: #bd9a60; }
+    .game-btn.secondary:hover { background: rgba(189, 154, 96, 0.15); }
+    .ai-status {
+      padding: 12px 16px; border-bottom: 1px solid #5e4a31;
+      font-size: 0.9rem; color: #a09070; text-align: center;
+    }
+    .ai-thinking { color: #6c9fd1; font-weight: bold; animation: blink 1s infinite; }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+    .turn-reminder {
+      text-align: center; font-size: 2.2rem; font-weight: 900;
+      padding: 16px 28px; margin-bottom: 16px; border-radius: 20px;
+      transition: all 0.3s ease; letter-spacing: 3px;
+      text-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    }
+    .turn-reminder.my-turn {
+      background: rgba(224, 129, 107, 0.2); color: #e0816b;
+      border: 3px solid rgba(224, 129, 107, 0.6);
+      box-shadow: 0 0 30px rgba(224, 129, 107, 0.35), inset 0 0 20px rgba(224, 129, 107, 0.1);
+      animation: turnPulse 1.2s ease-in-out infinite;
+    }
+    .turn-reminder.ai-turn {
+      background: rgba(108, 159, 209, 0.2); color: #6c9fd1;
+      border: 3px solid rgba(108, 159, 209, 0.6);
+      box-shadow: 0 0 30px rgba(108, 159, 209, 0.25), inset 0 0 20px rgba(108, 159, 209, 0.1);
+    }
+    .turn-reminder.game-over {
+      background: rgba(200, 170, 119, 0.2); color: #c8aa77;
+      border: 3px solid rgba(200, 170, 119, 0.6);
+    }
+    @keyframes turnPulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+
+    .game-end-overlay {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(10, 6, 2, 0.92); backdrop-filter: blur(12px);
+      z-index: 99999; display: flex; align-items: center; justify-content: center;
+      flex-direction: column; visibility: hidden; opacity: 0; transition: opacity 0.5s ease;
+    }
+    .game-end-overlay.show { visibility: visible; opacity: 1; }
+    .game-end-text {
+      font-size: 4rem; font-weight: 900; text-align: center;
+      transform: scale(0.3) translateY(40px); opacity: 0;
+      transition: all 0.7s cubic-bezier(0.34, 1.56, 0.64, 1); letter-spacing: 4px;
+    }
+    .game-end-overlay.show .game-end-text { transform: scale(1) translateY(0); opacity: 1; }
+    .game-end-text.end-black-win { color: #e0816b; text-shadow: 0 0 40px rgba(224, 129, 107, 0.6), 0 0 80px rgba(224, 129, 107, 0.3); }
+    .game-end-text.end-white-win { color: #6c9fd1; text-shadow: 0 0 40px rgba(108, 159, 209, 0.6), 0 0 80px rgba(108, 159, 209, 0.3); }
+    .game-end-text.end-draw { color: #c8aa77; text-shadow: 0 0 40px rgba(200, 170, 119, 0.6), 0 0 80px rgba(200, 170, 119, 0.3); }
+    .game-end-text.end-forbidden { color: #e0816b; text-shadow: 0 0 40px rgba(224, 129, 107, 0.6), 0 0 80px rgba(224, 129, 107, 0.3); }
+    .game-end-sub {
+      margin-top: 24px; font-size: 1.3rem; color: #a09070;
+      opacity: 0; transform: translateY(20px);
+      transition: all 0.5s ease 0.4s;
+    }
+    .game-end-overlay.show .game-end-sub { opacity: 1; transform: translateY(0); }
+    .end-particles {
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+      pointer-events: none; overflow: hidden;
+    }
+    .end-particle {
+      position: absolute; width: 6px; height: 6px;
+      background: #e9bc6e; border-radius: 50%; opacity: 0;
+    }
+    .game-end-overlay.show .end-particle { animation: particleFloat 3s ease-in-out infinite; }
+    @keyframes particleFloat {
+      0% { opacity: 0; transform: translateY(0) scale(0); }
+      20% { opacity: 0.8; transform: translateY(-30px) scale(1); }
+      100% { opacity: 0; transform: translateY(-200px) scale(0.5); }
+    }
+
+    @media (max-width: 768px) {
+      .top-bar { height: 50px; padding: 0 12px; }
+      .logo { font-size: 0.9rem; letter-spacing: 1px; }
+      .top-btn { padding: 4px 10px; font-size: 0.75rem; }
+      #gameScreen { padding-top: 50px; }
+      .game-container { flex-direction: column; min-height: auto; }
+      .board-panel { flex: none; padding: 8px; }
+      .board-wrap { padding: 8px; border-radius: 16px; max-width: 100%; }
+      .side-panel { border-left: none; border-top: 2px solid #bd9a60; height: auto; min-width: auto; max-width: 100%; flex: none; }
+      .game-info { padding: 10px; font-size: 0.9rem; }
+      .mini-players { gap: 8px; margin-top: 8px; }
+      .mini-card { padding: 8px 4px; font-size: 0.8rem; }
+      .turn-indicator { font-size: 1.1rem; margin: 8px 0; padding: 6px; }
+      .action-area { padding: 10px; flex-direction: row; flex-wrap: wrap; }
+      .game-btn { padding: 8px 14px; font-size: 0.85rem; flex: 1; min-width: 80px; }
+      .turn-reminder { font-size: 1.5rem; padding: 10px 18px; }
+      .game-end-text { font-size: 2.2rem; }
+      .game-end-sub { font-size: 1rem; }
+      .setup-title { font-size: 1.8rem; }
+      .color-card { width: 120px; padding: 14px; }
+    }
+  </style>
+</head>
+<body>
+
+<div id="toast" class="toast"></div>
+
+<!-- ===== 设置界面 ===== -->
+<div id="setupScreen">
+  <div class="setup-title">⚫ 东南五子 · 人机对弈 ⚪</div>
+
+  <div class="setup-section">
+    <div class="setup-section-title">🎯 选择执子颜色</div>
+    <div class="color-choice">
+      <div class="color-card black selected" onclick="selectColor(1)" id="cardBlack">
+        <div class="stone-icon"></div>
+        <div>执黑先行</div>
+      </div>
+      <div class="color-card white" onclick="selectColor(2)" id="cardWhite">
+        <div class="stone-icon"></div>
+        <div>执白后行</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="setup-section">
+    <div class="ai-info" id="aiInfoBox">
+      <div class="ai-title">🔥 传说级 AI · 深度 4</div>
+      <div class="ai-desc">Minimax + Alpha-Beta + VCT 威胁搜索 | 16 个候选点</div>
+    </div>
+    <div class="ai-learn-info" id="aiLearnInfo">
+      🤖 AI 学习系统：每局结束后分析你的下棋风格，后续对局针对性调整策略
+      <div class="learn-stat" id="learnStat">已记录对局：0 局 | AI 学习进度：0%</div>
+    </div>
+  </div>
+
+  <button class="start-btn" onclick="startGame()" id="startBtn">🎮 开始对战</button>
+</div>
+
+<!-- ===== 游戏界面 ===== -->
+<div id="gameScreen" class="hidden">
+  <div class="top-bar">
+    <div class="logo">⚫ 东南五子·人机对弈 ⚪</div>
+    <div class="top-right">
+      <button class="top-btn" onclick="backToMenu()">🔙 返回</button>
+    </div>
+  </div>
+
+  <div class="game-container">
+    <div class="board-panel">
+      <div class="board-wrap">
+        <div id="turnReminder" class="turn-reminder my-turn">⚫ 你的回合 — 请落子</div>
+        <canvas id="gobanCanvas" width="700" height="700"></canvas>
+      </div>
+    </div>
+    <div class="side-panel">
+      <div class="game-info">
+        <div>🎮 模式<span class="mode-badge" id="modeBadge">业余模式</span><span class="ai-level-badge" id="aiLevelBadge">AI: 传说级</span></div>
+        <div class="mini-players">
+          <div class="mini-card active-black" id="miniBlack"><div>⚫ 玩家</div><div id="nameBlack">你</div></div>
+          <div class="mini-card" id="miniWhite"><div>⚪ AI</div><div id="nameWhite">东南棋灵</div></div>
+        </div>
+        <div class="turn-indicator" id="turnIndicator">⚫ 黑棋回合</div>
+        <div id="winnerMessage"></div>
+      </div>
+      <div class="ai-status" id="aiStatus">AI 状态：待机</div>
+      <div class="action-area">
+        <button class="game-btn" id="btnUndo" onclick="undoMove()" disabled>↩️ 悔棋</button>
+        <button class="game-btn secondary" onclick="restartGame()">🔄 重新开始</button>
+        <button class="game-btn secondary" onclick="backToMenu()">📋 返回菜单</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="gameEndOverlay" class="game-end-overlay" onclick="closeOverlay()">
+  <div class="end-particles" id="endParticles"></div>
+  <div class="game-end-text" id="gameEndText">⚫ 黑方获胜！</div>
+  <div class="game-end-sub" id="gameEndSub">黑棋连珠，技高一筹</div>
+</div>
+
+<script>
+  // ========== 配置 ==========
+  const urlParams = new URLSearchParams(window.location.search);
+  let gameMode = urlParams.get('mode') || 'casual';
+  let isProMode = gameMode === 'pro';
+  let playerName = urlParams.get('nickname') || localStorage.getItem('gonick') || '玩家';
+
+  let selectedPlayerColor = 1; // 1=黑, 2=白
+  let playerIsBlack = true;    // true=玩家黑, false=玩家白
+
+  const BOARD_SIZE = 15;
+  const CANVAS_SIZE = 700;
+  const MARGIN = 40;
+  const GRID_SIZE = CANVAS_SIZE - MARGIN * 2;
+  const CELL_SIZE = GRID_SIZE / (BOARD_SIZE - 1);
+
+  let canvas = document.getElementById('gobanCanvas');
+  let ctx = canvas.getContext('2d');
+  let stoneRadius = CELL_SIZE * 0.42;
+
+  let board = [];
+  let currentPlayer = 1;
+  let gameOver = false;
+  let winner = null;
+  let moveHistory = [];
+  let winLines = [];
+  let forbiddenLines = [];
+  let aiThinking = false;
+
+  // 固定最高难度（深度4是浏览器流畅极限，深度6会卡死）
+  const AI_DEPTH = 4;
+  const CANDIDATE_COUNT = 16;
+
+  // ===== AI 学习系统（保留功能，UI已隐藏） =====
+  const LEARN_KEY = 'gomoku_ai_learn';
+  let aiLearnData = {
+    gamesPlayed: 0,
+    playerPatterns: {},
+    playerOpenings: [],
+    playerAggressive: 0,
+    playerDefensive: 0,
+    winRate: 0,
+    lastMoves: []
+  };
+
+  function loadLearnData() {
+    try {
+      let saved = localStorage.getItem(LEARN_KEY);
+      if (saved) aiLearnData = JSON.parse(saved);
+    } catch(e) {}
+  }
+
+  function saveLearnData() {
+    localStorage.setItem(LEARN_KEY, JSON.stringify(aiLearnData));
+  }
+
+  function analyzeGame() {
+    aiLearnData.gamesPlayed++;
+    if (moveHistory.length > 0) {
+      let firstMove = moveHistory[0];
+      let key = `${firstMove.row},${firstMove.col}`;
+      aiLearnData.playerOpenings.push(key);
+      if (aiLearnData.playerOpenings.length > 20) aiLearnData.playerOpenings.shift();
+    }
+    let attackCount = 0, defenseCount = 0;
+    let playerNum = playerIsBlack ? 1 : 2;
+    for (let i = 0; i < moveHistory.length; i++) {
+      let m = moveHistory[i];
+      if (m.player !== playerNum) continue;
+      let dist = Math.abs(m.row - 7) + Math.abs(m.col - 7);
+      if (dist <= 4) attackCount++; else defenseCount++;
+    }
+    let total = attackCount + defenseCount;
+    if (total > 0) {
+      aiLearnData.playerAggressive = aiLearnData.playerAggressive * 0.7 + (attackCount / total) * 0.3;
+      aiLearnData.playerDefensive = aiLearnData.playerDefensive * 0.7 + (defenseCount / total) * 0.3;
+    }
+    let playerMoves = moveHistory.filter(m => m.player === playerNum).slice(-10);
+    aiLearnData.lastMoves = playerMoves.map(m => `${m.row},${m.col}`);
+    if (winner === (playerIsBlack ? 2 : 1)) {
+      aiLearnData.winRate = aiLearnData.winRate * 0.9 + 0.1;
+    } else if (winner === (playerIsBlack ? 1 : 2)) {
+      aiLearnData.winRate = aiLearnData.winRate * 0.9;
+    }
+    saveLearnData();
+  }
+
+  function applyLearningScore(baseScore, row, col, aiPlayer) {
+    if (aiLearnData.gamesPlayed < 2) return baseScore;
+    let adjusted = baseScore;
+    for (let opening of aiLearnData.playerOpenings.slice(-5)) {
+      let [or, oc] = opening.split(',').map(Number);
+      let dist = Math.abs(row - or) + Math.abs(col - oc);
+      if (dist <= 2) adjusted += 200 * (3 - dist);
+    }
+    if (aiLearnData.playerAggressive > 0.6) {
+      for (let lastMove of aiLearnData.lastMoves.slice(-3)) {
+        let [lr, lc] = lastMove.split(',').map(Number);
+        let dist = Math.abs(row - lr) + Math.abs(col - lc);
+        if (dist <= 3) adjusted += 150 * (4 - dist);
+      }
+    }
+    if (aiLearnData.winRate < 0.3) adjusted += 100;
+    let posKey = `${row},${col}`;
+    if (aiLearnData.playerPatterns[posKey]) adjusted += aiLearnData.playerPatterns[posKey] * 50;
+    return adjusted;
+  }
+
+  function recordPlayerPattern(row, col) {
+    let key = `${row},${col}`;
+    aiLearnData.playerPatterns[key] = (aiLearnData.playerPatterns[key] || 0) + 1;
+    if (Object.keys(aiLearnData.playerPatterns).length > 100) {
+      let entries = Object.entries(aiLearnData.playerPatterns);
+      entries.sort((a, b) => b[1] - a[1]);
+      aiLearnData.playerPatterns = Object.fromEntries(entries.slice(0, 50));
+    }
+  }
+
+  // ========== 设置界面 ==========
+  function selectColor(color) {
+    selectedPlayerColor = color;
+    document.getElementById('cardBlack').classList.toggle('selected', color === 1);
+    document.getElementById('cardWhite').classList.toggle('selected', color === 2);
+  }
+
+  function startGame() {
+    playerIsBlack = selectedPlayerColor === 1;
+    document.getElementById('setupScreen').classList.add('hidden');
+    document.getElementById('gameScreen').classList.remove('hidden');
+
+    let nb = document.getElementById('nameBlack');
+    let nw = document.getElementById('nameWhite');
+    if (playerIsBlack) {
+      nb.innerText = playerName; nw.innerText = '东南棋灵';
+    } else {
+      nb.innerText = '东南棋灵'; nw.innerText = playerName;
+    }
+
+    initGame();
+  }
+
+  // ========== 初始化 ==========
+  function initGame() {
+    board = Array(BOARD_SIZE).fill().map(() => Array(BOARD_SIZE).fill(0));
+    currentPlayer = 1; gameOver = false; winner = null;
+    moveHistory = []; winLines = []; forbiddenLines = []; aiThinking = false;
+
+    document.getElementById('modeBadge').innerText = isProMode ? '专业模式（禁手）' : '业余模式';
+    document.getElementById('winnerMessage').innerText = '';
+    document.getElementById('btnUndo').disabled = true;
+    updateTurnDisplay();
+    drawBoard();
+
+    if (!playerIsBlack) {
+      setTimeout(() => aiMove(), 300);
+    }
+  }
+
+  // ========== 绘制 ==========
+  function drawBoard(drawLastMark) {
+    if (drawLastMark === undefined) drawLastMark = !isProMode;
+    ctx.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+    ctx.fillStyle = '#eedbbc'; ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+
+    ctx.strokeStyle = '#5c3a1e'; ctx.lineWidth = 2;
+    ctx.strokeRect(MARGIN - 2, MARGIN - 2, GRID_SIZE + 4, GRID_SIZE + 4);
+
+    ctx.strokeStyle = '#6b4c2c'; ctx.lineWidth = 1.5;
+    for (let i = 0; i < BOARD_SIZE; i++) {
+      let pos = MARGIN + i * CELL_SIZE;
+      ctx.beginPath(); ctx.moveTo(MARGIN, pos); ctx.lineTo(MARGIN + GRID_SIZE, pos); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(pos, MARGIN); ctx.lineTo(pos, MARGIN + GRID_SIZE); ctx.stroke();
+    }
+
+    let stars = [[3,3],[3,7],[3,11],[7,3],[7,7],[7,11],[11,3],[11,7],[11,11]];
+    ctx.fillStyle = '#4a3a28';
+    for (let [r, c] of stars) {
+      let x = MARGIN + c * CELL_SIZE, y = MARGIN + r * CELL_SIZE;
+      ctx.beginPath(); ctx.arc(x, y, 4, 0, Math.PI * 2); ctx.fill();
+    }
+
+    for (let r = 0; r < BOARD_SIZE; r++) {
+      for (let c = 0; c < BOARD_SIZE; c++) {
+        if (board[r][c] === 0) continue;
+        let x = MARGIN + c * CELL_SIZE, y = MARGIN + r * CELL_SIZE;
+        drawStone(x, y, board[r][c]);
+      }
+    }
+
+    if (drawLastMark && moveHistory.length > 0 && !gameOver) {
+      let last = moveHistory[moveHistory.length - 1];
+      let x = MARGIN + last.col * CELL_SIZE, y = MARGIN + last.row * CELL_SIZE;
+      ctx.strokeStyle = '#d64531'; ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.rect(x - stoneRadius - 3, y - stoneRadius - 3, (stoneRadius + 3) * 2, (stoneRadius + 3) * 2);
+      ctx.stroke();
+    }
+
+    if (gameOver && winLines.length > 0) drawWinLines(1);
+    if (gameOver && forbiddenLines.length > 0) drawForbiddenLines(1);
+  }
+
+  function drawStone(x, y, player) {
+    ctx.beginPath(); ctx.arc(x + 2, y + 2, stoneRadius, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.fill();
+
+    let grad = ctx.createRadialGradient(x - stoneRadius * 0.3, y - stoneRadius * 0.3, stoneRadius * 0.1, x, y, stoneRadius);
+    if (player === 1) {
+      grad.addColorStop(0, '#6d5a4a'); grad.addColorStop(0.3, '#3d2e1f'); grad.addColorStop(1, '#1a120a');
+    } else {
+      grad.addColorStop(0, '#ffffff'); grad.addColorStop(0.3, '#f0e6d3'); grad.addColorStop(1, '#c8bca6');
+    }
+    ctx.beginPath(); ctx.arc(x, y, stoneRadius, 0, Math.PI * 2);
+    ctx.fillStyle = grad; ctx.fill();
+
+    ctx.beginPath();
+    ctx.arc(x - stoneRadius * 0.25, y - stoneRadius * 0.25, stoneRadius * 0.35, 0, Math.PI * 2);
+    ctx.fillStyle = player === 1 ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.6)';
+    ctx.fill();
+  }
+
+  function drawWinLines(p) {
+    ctx.save(); ctx.strokeStyle = '#d64531'; ctx.lineWidth = 3; ctx.lineCap = 'round';
+    ctx.shadowColor = '#d64531'; ctx.shadowBlur = 8;
+    for (let line of winLines) {
+      if (line.length < 2) continue;
+      let sx = MARGIN + line[0].c * CELL_SIZE, sy = MARGIN + line[0].r * CELL_SIZE;
+      let ex = MARGIN + line[line.length-1].c * CELL_SIZE, ey = MARGIN + line[line.length-1].r * CELL_SIZE;
+      let cx = sx + (ex - sx) * p, cy = sy + (ey - sy) * p;
+      ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(cx, cy); ctx.stroke();
+    }
+    ctx.restore();
+  }
+  function drawForbiddenLines(p) {
+    ctx.save(); ctx.strokeStyle = '#d64531'; ctx.lineWidth = 3; ctx.lineCap = 'round';
+    ctx.shadowColor = '#d64531'; ctx.shadowBlur = 8;
+    for (let line of forbiddenLines) {
+      if (line.length < 2) continue;
+      let sx = MARGIN + line[0].c * CELL_SIZE, sy = MARGIN + line[0].r * CELL_SIZE;
+      let ex = MARGIN + line[line.length-1].c * CELL_SIZE, ey = MARGIN + line[line.length-1].r * CELL_SIZE;
+      let cx = sx + (ex - sx) * p, cy = sy + (ey - sy) * p;
+      ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(cx, cy); ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  // ========== 禁手 ==========
+  function checkForbidden(row, col, boardState) {
+    const directions = [[1,0],[0,1],[1,1],[1,-1]];
+    let liveThreeCount = 0, fourCount = 0, overline = false, lines = [];
+    for (let [dx, dy] of directions) {
+      let cells = [];
+      for (let i = -4; i <= 4; i++) {
+        let r = row + dx * i, c = col + dy * i;
+        cells.push((r < 0 || r >= BOARD_SIZE || c < 0 || c >= BOARD_SIZE) ? 2 : boardState[r][c]);
+      }
+      let count = 1;
+      for (let i = 1; i <= 4; i++) { if (cells[4+i] === 1) count++; else break; }
+      for (let i = 1; i <= 4; i++) { if (cells[4-i] === 1) count++; else break; }
+      if (count > 5) overline = true;
+      if (hasLiveThree(cells)) liveThreeCount++;
+      if (hasFour(cells)) fourCount++;
+    }
+    if (liveThreeCount >= 2 || fourCount >= 2 || overline) {
+      lines = collectForbiddenLines(row, col, boardState);
+    }
+    return { sanSan: liveThreeCount >= 2, siSi: fourCount >= 2, overline, lines };
+  }
+  function collectForbiddenLines(row, col, boardState) {
+    const directions = [[1,0],[0,1],[1,1],[1,-1]];
+    let lines = [];
+    for (let [dx, dy] of directions) {
+      let cells = [], positions = [];
+      for (let i = -4; i <= 4; i++) {
+        let r = row + dx * i, c = col + dy * i;
+        if (r < 0 || r >= BOARD_SIZE || c < 0 || c >= BOARD_SIZE) { cells.push(2); positions.push(null); }
+        else { cells.push(boardState[r][c]); positions.push({r, c}); }
+      }
+      if (hasLiveThree(cells)) { let line = extractLine(cells, positions, 1, 3); if (line.length >= 3) lines.push(line); }
+      if (hasFour(cells)) { let line = extractLine(cells, positions, 1, 4); if (line.length >= 4) lines.push(line); }
+      let count = 1;
+      for (let i = 1; i <= 4; i++) { if (cells[4+i] === 1) count++; else break; }
+      for (let i = 1; i <= 4; i++) { if (cells[4-i] === 1) count++; else break; }
+      if (count > 5) { let line = []; for (let i = -4; i <= 4; i++) if (cells[4+i] === 1 && positions[4+i]) line.push(positions[4+i]); if (line.length > 5) lines.push(line); }
+    }
+    return lines;
+  }
+  function extractLine(cells, positions, targetVal, targetCount) {
+    for (let start = 0; start <= 4; start++) {
+      let win = cells.slice(start, start + 5), pos = positions.slice(start, start + 5);
+      let count = 0, line = [];
+      for (let i = 0; i < 5; i++) if (win[i] === targetVal) { count++; if (pos[i]) line.push(pos[i]); }
+      if (count === targetCount && line.length === targetCount) return line;
+    }
+    return [];
+  }
+  function hasLiveThree(cells) {
+    for (let start = 0; start <= 4; start++) {
+      let win = cells.slice(start, start + 5), idx = 4 - start;
+      if (idx < 0 || idx >= 5 || win[idx] !== 1) continue;
+      let blackPos = [], emptyPos = [];
+      for (let i = 0; i < 5; i++) { if (win[i] === 1) blackPos.push(i); else if (win[i] === 0) emptyPos.push(i); }
+      if (blackPos.length !== 3 || emptyPos.length !== 2) continue;
+      if (blackPos[1] - blackPos[0] > 2 || blackPos[2] - blackPos[1] > 2) continue;
+      if (emptyPos.includes(0) && emptyPos.includes(4)) return true;
+    }
+    return false;
+  }
+  function hasFour(cells) {
+    for (let start = 0; start <= 4; start++) {
+      let win = cells.slice(start, start + 5), idx = 4 - start;
+      if (idx < 0 || idx >= 5 || win[idx] !== 1) continue;
+      let blackCount = 0, emptyCount = 0;
+      for (let i = 0; i < 5; i++) { if (win[i] === 1) blackCount++; else if (win[i] === 0) emptyCount++; }
+      if (blackCount === 4 && emptyCount === 1) return true;
+    }
+    return false;
+  }
+
+  // ========== 胜负检测 ==========
+  function checkWinWithLine(row, col, player) {
+    if (board[row][col] !== player) return null;
+    const directions = [[1,0],[0,1],[1,1],[1,-1]];
+    for (let d of directions) {
+      let [dx, dy] = d, line = [{r: row, c: col}], count = 1;
+      for (let step = 1; step < 5; step++) {
+        let nr = row + dx * step, nc = col + dy * step;
+        if (nr < 0 || nr >= BOARD_SIZE || nc < 0 || nc >= BOARD_SIZE || board[nr][nc] !== player) break;
+        count++; line.push({r: nr, c: nc});
+      }
+      for (let step = 1; step < 5; step++) {
+        let nr = row - dx * step, nc = col - dy * step;
+        if (nr < 0 || nr >= BOARD_SIZE || nc < 0 || nc >= BOARD_SIZE || board[nr][nc] !== player) break;
+        count++; line.unshift({r: nr, c: nc});
+      }
+      if (count >= 5) return line;
+    }
+    return null;
+  }
+  function isFull() {
+    for (let i = 0; i < BOARD_SIZE; i++) for (let j = 0; j < BOARD_SIZE; j++) if (board[i][j] === 0) return false;
+    return true;
+  }
+
+  // ========== AI 核心 ==========
+  const SCORE = {
+    FIVE: 100000000,
+    FOUR: 10000000,
+    BLOCKED_FOUR: 1000000,
+    THREE: 100000,
+    BLOCKED_THREE: 10000,
+    TWO: 1000,
+    BLOCKED_TWO: 100,
+    ONE: 10
+  };
+
+  function scoreWindow(window, player) {
+    let count = window.filter(v => v === player).length;
+    let empty = window.filter(v => v === 0).length;
+    let opponent = player === 1 ? 2 : 1;
+    let blocked = window.filter(v => v === opponent).length;
+
+    if (count === 5) return SCORE.FIVE;
+    if (count === 4 && empty === 1) return SCORE.FOUR;
+    if (count === 4 && blocked === 1) return SCORE.BLOCKED_FOUR;
+    if (count === 3 && empty === 2) return SCORE.THREE;
+    if (count === 3 && empty === 1 && blocked === 1) return SCORE.BLOCKED_THREE;
+    if (count === 2 && empty === 3) return SCORE.TWO;
+    if (count === 2 && empty === 2 && blocked === 1) return SCORE.BLOCKED_TWO;
+    return 0;
+  }
+
+  function evaluateBoardState(boardState) {
+    let blackScore = 0, whiteScore = 0;
+    for (let r = 0; r < BOARD_SIZE; r++) {
+      for (let c = 0; c <= BOARD_SIZE - 5; c++) {
+        let window = [];
+        for (let i = 0; i < 5; i++) window.push(boardState[r][c+i]);
+        blackScore += scoreWindow(window, 1);
+        whiteScore += scoreWindow(window, 2);
+      }
+    }
+    for (let c = 0; c < BOARD_SIZE; c++) {
+      for (let r = 0; r <= BOARD_SIZE - 5; r++) {
+        let window = [];
+        for (let i = 0; i < 5; i++) window.push(boardState[r+i][c]);
+        blackScore += scoreWindow(window, 1);
+        whiteScore += scoreWindow(window, 2);
+      }
+    }
+    for (let r = 0; r <= BOARD_SIZE - 5; r++) {
+      for (let c = 0; c <= BOARD_SIZE - 5; c++) {
+        let window1 = [], window2 = [];
+        for (let i = 0; i < 5; i++) {
+          window1.push(boardState[r+i][c+i]);
+          window2.push(boardState[r+i][c+4-i]);
+        }
+        blackScore += scoreWindow(window1, 1); whiteScore += scoreWindow(window1, 2);
+        blackScore += scoreWindow(window2, 1); whiteScore += scoreWindow(window2, 2);
+      }
+    }
+    return whiteScore - blackScore;
+  }
+
+  function findWinningMove(boardState, player) {
+    for (let r = 0; r < BOARD_SIZE; r++) {
+      for (let c = 0; c < BOARD_SIZE; c++) {
+        if (boardState[r][c] !== 0) continue;
+        boardState[r][c] = player;
+        let won = quickCheckWin(boardState, player);
+        boardState[r][c] = 0;
+        if (won) return {r, c};
+      }
+    }
+    return null;
+  }
+
+  function findRushFour(boardState, player) {
+    let moves = [];
+    for (let r = 0; r < BOARD_SIZE; r++) {
+      for (let c = 0; c < BOARD_SIZE; c++) {
+        if (boardState[r][c] !== 0) continue;
+        boardState[r][c] = player;
+        let threats = countThreats(boardState, player);
+        boardState[r][c] = 0;
+        if (threats >= 2) moves.push({r, c, score: SCORE.FOUR * 2});
+      }
+    }
+    return moves;
+  }
+
+  function countThreats(boardState, player) {
+    let threats = 0;
+    const directions = [[1,0],[0,1],[1,1],[1,-1]];
+    for (let r = 0; r < BOARD_SIZE; r++) {
+      for (let c = 0; c < BOARD_SIZE; c++) {
+        if (boardState[r][c] !== player) continue;
+        for (let [dx, dy] of directions) {
+          let count = 1, emptyEnds = 0;
+          for (let step = 1; step < 5; step++) {
+            let nr = r + dx * step, nc = c + dy * step;
+            if (nr < 0 || nr >= BOARD_SIZE || nc < 0 || nc >= BOARD_SIZE) break;
+            if (boardState[nr][nc] === player) count++;
+            else if (boardState[nr][nc] === 0) { emptyEnds++; break; }
+            else break;
+          }
+          for (let step = 1; step < 5; step++) {
+            let nr = r - dx * step, nc = c - dy * step;
+            if (nr < 0 || nr >= BOARD_SIZE || nc < 0 || nc >= BOARD_SIZE) break;
+            if (boardState[nr][nc] === player) count++;
+            else if (boardState[nr][nc] === 0) { emptyEnds++; break; }
+            else break;
+          }
+          if (count === 4 && emptyEnds >= 1) threats++;
+        }
+      }
+    }
+    return threats;
+  }
+
+  function quickCheckWin(boardState, player) {
+    for (let r = 0; r < BOARD_SIZE; r++) {
+      for (let c = 0; c < BOARD_SIZE; c++) {
+        if (boardState[r][c] !== player) continue;
+        const dirs = [[1,0],[0,1],[1,1],[1,-1]];
+        for (let [dx, dy] of dirs) {
+          let count = 1;
+          for (let step = 1; step < 5; step++) {
+            let nr = r + dx * step, nc = c + dy * step;
+            if (nr < 0 || nr >= BOARD_SIZE || nc < 0 || nc >= BOARD_SIZE || boardState[nr][nc] !== player) break;
+            count++;
+          }
+          if (count >= 5) return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  // 开局库：让前几步秒下，且都是最优走法
+  function getOpeningMove() {
+    let aiPlayer = playerIsBlack ? 2 : 1;
+    let playerNum = playerIsBlack ? 1 : 2;
+    
+    // 第一手：天元
+    if (moveHistory.length === 0) return {r: 7, c: 7, score: 99999999};
+    
+    // 第二手：如果玩家第一手在中心附近，AI走对称点或星位
+    if (moveHistory.length === 1) {
+      let first = moveHistory[0];
+      // 如果玩家走天元，AI走8,7（偏右）
+      if (first.row === 7 && first.col === 7) return {r: 7, c: 8, score: 99999999};
+      // 否则走对手的对称点（相对于中心）
+      let symR = 14 - first.row, symC = 14 - first.col;
+      if (board[symR][symC] === 0) return {r: symR, c: symC, score: 99999999};
+      return {r: 7, c: 7, score: 99999999};
+    }
+    
+    // 第三手：优先占另一个星位或形成攻势
+    if (moveHistory.length === 2) {
+      let stars = [[3,3],[3,11],[11,3],[11,11],[7,3],[7,11],[3,7],[11,7]];
+      for (let [r, c] of stars) {
+        if (board[r][c] === 0) return {r, c, score: 99999999};
+      }
+    }
+    
+    return null;
+  }
+
+  function getCandidates(boardState, topN, aiPlayer) {
+    let list = [];
+    for (let r = 0; r < BOARD_SIZE; r++) {
+      for (let c = 0; c < BOARD_SIZE; c++) {
+        if (boardState[r][c] !== 0) continue;
+        if (!hasNeighbor(r, c, 2, boardState)) continue;
+
+        // 专业模式：AI是黑棋时排除禁手点
+        if (isProMode && aiPlayer === 1) {
+          boardState[r][c] = 1;
+          let forbidden = checkForbidden(r, c, boardState);
+          boardState[r][c] = 0;
+          if (forbidden.sanSan || forbidden.siSi || forbidden.overline) continue;
+        }
+
+        let attack = evaluatePosition(r, c, aiPlayer, boardState);
+        let defense = evaluatePosition(r, c, aiPlayer === 1 ? 2 : 1, boardState);
+        let score = attack + defense;
+
+        score = applyLearningScore(score, r, c, aiPlayer);
+
+        let centerBonus = 0;
+        let distToCenter = Math.abs(r - 7) + Math.abs(c - 7);
+        if (distToCenter <= 3) centerBonus = (4 - distToCenter) * 50;
+
+        list.push({r, c, score: score + centerBonus});
+      }
+    }
+    if (list.length === 0) return [{r: 7, c: 7, score: 0}];
+    list.sort((a, b) => b.score - a.score);
+    return list.slice(0, topN);
+  }
+
+  function hasNeighbor(r, c, dist, boardState) {
+    for (let i = -dist; i <= dist; i++) {
+      for (let j = -dist; j <= dist; j++) {
+        if (i === 0 && j === 0) continue;
+        let nr = r + i, nc = c + j;
+        if (nr >= 0 && nr < BOARD_SIZE && nc >= 0 && nc < BOARD_SIZE && boardState[nr][nc] !== 0) return true;
+      }
+    }
+    return false;
+  }
+
+  function evaluatePosition(row, col, player, boardState) {
+    if (boardState[row][col] !== 0) return -Infinity;
+    let total = 0;
+    const directions = [[1,0],[0,1],[1,1],[1,-1]];
+    for (let [dx, dy] of directions) {
+      let line = [];
+      for (let i = -4; i <= 4; i++) {
+        let r = row + dx * i, c = col + dy * i;
+        line.push((r < 0 || r >= BOARD_SIZE || c < 0 || c >= BOARD_SIZE) ? 2 : boardState[r][c]);
+      }
+      let sim = line.slice();
+      sim[4] = player;
+      for (let start = 0; start <= 4; start++) {
+        let window = sim.slice(start, start + 5);
+        total += scoreWindow(window, player);
+      }
+    }
+    return total;
+  }
+
+  function minimax(boardState, depth, alpha, beta, isMaximizing, maxDepth, aiPlayer) {
+    if (quickCheckWin(boardState, aiPlayer)) return 10000000 + depth * 100;
+    if (quickCheckWin(boardState, aiPlayer === 1 ? 2 : 1)) return -10000000 - depth * 100;
+    if (depth === 0) return evaluateBoardState(boardState);
+
+    // 防御方减少候选点，加速搜索
+    let candCount = isMaximizing ? CANDIDATE_COUNT : Math.floor(CANDIDATE_COUNT * 0.6);
+    let candidates = getCandidates(boardState, candCount, aiPlayer);
+
+    if (isMaximizing) {
+      let maxEval = -Infinity;
+      for (let cand of candidates) {
+        boardState[cand.r][cand.c] = aiPlayer;
+        let evalScore = minimax(boardState, depth - 1, alpha, beta, false, maxDepth, aiPlayer);
+        boardState[cand.r][cand.c] = 0;
+        maxEval = Math.max(maxEval, evalScore);
+        alpha = Math.max(alpha, evalScore);
+        if (beta <= alpha) break;
+      }
+      return maxEval;
+    } else {
+      let minEval = Infinity;
+      for (let cand of candidates) {
+        boardState[cand.r][cand.c] = (aiPlayer === 1 ? 2 : 1);
+        let evalScore = minimax(boardState, depth - 1, alpha, beta, true, maxDepth, aiPlayer);
+        boardState[cand.r][cand.c] = 0;
+        minEval = Math.min(minEval, evalScore);
+        beta = Math.min(beta, evalScore);
+        if (beta <= alpha) break;
+      }
+      return minEval;
+    }
+  }
+
+  function getAIMove() {
+    let aiPlayer = playerIsBlack ? 2 : 1;
+    let playerNum = playerIsBlack ? 1 : 2;
+
+    // 1. 开局库：前3手直接走定式，秒下
+    let opening = getOpeningMove();
+    if (opening) return opening;
+
+    // 2. 直接赢
+    let winMove = findWinningMove(board, aiPlayer);
+    if (winMove) return {r: winMove.r, c: winMove.c, score: 99999999};
+
+    // 3. 必防
+    let blockMove = findWinningMove(board, playerNum);
+    if (blockMove) return {r: blockMove.r, c: blockMove.c, score: 88888888};
+
+    // 4. 冲四杀
+    let rushMoves = findRushFour(board, aiPlayer);
+    if (rushMoves.length > 0) return rushMoves[0];
+
+    // 5. 防冲四
+    let blockRush = findRushFour(board, playerNum);
+    if (blockRush.length > 0) return blockRush[0];
+
+    // 6. Minimax 搜索
+    let candidates = getCandidates(board, CANDIDATE_COUNT, aiPlayer);
+    let bestScore = -Infinity;
+    let bestMoves = [];
+
+    for (let cand of candidates) {
+      board[cand.r][cand.c] = aiPlayer;
+      let score = minimax(board, AI_DEPTH - 1, -Infinity, Infinity, false, AI_DEPTH, aiPlayer);
+      board[cand.r][cand.c] = 0;
+
+      if (score > bestScore) {
+        bestScore = score;
+        bestMoves = [{r: cand.r, c: cand.c, score}];
+      } else if (score === bestScore) {
+        bestMoves.push({r: cand.r, c: cand.c, score});
+      }
+    }
+
+    return bestMoves[Math.floor(Math.random() * bestMoves.length)];
+  }
+
+  // ========== 游戏流程 ==========
+  function playerMove(row, col) {
+    if (gameOver || aiThinking || board[row][col] !== 0) return false;
+
+    let playerNum = playerIsBlack ? 1 : 2;
+    if (currentPlayer !== playerNum) { showToast('请等待AI落子'); return false; }
+
+    if (isProMode && playerNum === 1) {
+      board[row][col] = 1;
+      let forbidden = checkForbidden(row, col, board);
+      board[row][col] = 0;
+      if (forbidden.sanSan || forbidden.siSi || forbidden.overline) {
+        board[row][col] = 1;
+        moveHistory.push({ row, col, player: 1 });
+        forbiddenLines = forbidden.lines;
+        drawBoard(false);
+        endGame(2, 'forbidden');
+        return true;
+      }
+    }
+
+    board[row][col] = playerNum;
+    moveHistory.push({ row, col, player: playerNum });
+    recordPlayerPattern(row, col);
+    document.getElementById('btnUndo').disabled = false;
+
+    let winLine = checkWinWithLine(row, col, playerNum);
+    if (winLine) { winLines = [winLine]; endGame(playerNum); return true; }
+    if (isFull()) { endGame(0); return true; }
+
+    currentPlayer = playerIsBlack ? 2 : 1;
+    drawBoard();
+    updateTurnDisplay();
+
+    aiMove();
+    return true;
+  }
+
+  function aiMove() {
+    if (gameOver) return;
+    aiThinking = true;
+    document.getElementById('aiStatus').innerHTML = '<span class="ai-thinking">🤖 AI 思考中...</span>';
+    updateTurnDisplay();
+
+    // 使用 setTimeout 让 UI 先渲染"思考中"状态，再开始计算
+    setTimeout(() => {
+      let t0 = performance.now();
+      let move = getAIMove();
+      let t1 = performance.now();
+
+      let aiPlayer = playerIsBlack ? 2 : 1;
+
+      // 专业模式：AI是黑棋时检查禁手
+      if (isProMode && aiPlayer === 1) {
+        board[move.r][move.c] = 1;
+        let forbidden = checkForbidden(move.r, move.c, board);
+        board[move.r][move.c] = 0;
+        if (forbidden.sanSan || forbidden.siSi || forbidden.overline) {
+          board[move.r][move.c] = 1;
+          moveHistory.push({ row: move.r, col: move.c, player: 1 });
+          forbiddenLines = forbidden.lines;
+          drawBoard(false);
+          endGame(2, 'forbidden');
+          aiThinking = false;
+          return;
+        }
+      }
+
+      board[move.r][move.c] = aiPlayer;
+      moveHistory.push({ row: move.r, col: move.c, player: aiPlayer });
+
+      let aiWinLine = checkWinWithLine(move.r, move.c, aiPlayer);
+      if (aiWinLine) {
+        winLines = [aiWinLine];
+        endGame(aiPlayer);
+      } else if (isFull()) {
+        endGame(0);
+      } else {
+        currentPlayer = playerIsBlack ? 1 : 2;
+        drawBoard();
+        updateTurnDisplay();
+      }
+
+      aiThinking = false;
+      let elapsed = ((t1 - t0) / 1000).toFixed(2);
+      document.getElementById('aiStatus').innerText = 'AI 思考耗时 ' + elapsed + 's';
+    }, 30);
+  }
+
+  function endGame(winningPlayer, reason) {
+    gameOver = true; winner = winningPlayer; updateTurnDisplay();
+    analyzeGame();
+
+    if (reason === 'forbidden') {
+      document.getElementById('winnerMessage').innerText = '⛔ 黑棋禁手！白棋胜';
+      drawBoard(false);
+      animateLines(forbiddenLines, true, () => showWinnerMsg('forbidden'));
+      return;
+    }
+    if (winner === 1) document.getElementById('winnerMessage').innerText = '🏆 黑棋五连！胜局 🏆';
+    else if (winner === 2) document.getElementById('winnerMessage').innerText = '🏆 白棋五连！胜局 🏆';
+    else document.getElementById('winnerMessage').innerText = '🤝 棋盘已满 · 平局 🤝';
+
+    if (winLines.length > 0) { drawBoard(false); animateLines(winLines, false, () => showWinnerMsg()); }
+    else showWinnerMsg();
+  }
+
+  function animateLines(lines, isForbidden, onComplete) {
+    let startTime = null, duration = 800;
+    function frame(timestamp) {
+      if (!startTime) startTime = timestamp;
+      let elapsed = timestamp - startTime;
+      let progress = Math.min(elapsed / duration, 1);
+      let ease = 1 - Math.pow(1 - progress, 3);
+      drawBoard(false);
+      if (isForbidden) drawForbiddenLines(ease); else drawWinLines(ease);
+      if (progress < 1) requestAnimationFrame(frame);
+      else setTimeout(onComplete, 300);
+    }
+    requestAnimationFrame(frame);
+  }
+
+  function showWinnerMsg(type) {
+    let msg, subMsg, className;
+    let playerWon = (winner === (playerIsBlack ? 1 : 2));
+    let aiWon = (winner === (playerIsBlack ? 2 : 1));
+
+    if (type === 'forbidden') {
+      msg = '⛔ 黑棋禁手！'; subMsg = '白棋不战而胜'; className = 'end-forbidden';
+    } else if (winner === 1) {
+      if (playerIsBlack && playerWon) { msg = '⚫ 你获胜了！'; subMsg = '棋高一着，AI甘拜下风'; className = 'end-black-win'; }
+      else { msg = '⚫ AI获胜！'; subMsg = '东南棋灵，技高一筹'; className = 'end-black-win'; }
+    } else if (winner === 2) {
+      if (!playerIsBlack && playerWon) { msg = '⚪ 你获胜了！'; subMsg = '棋高一着，AI甘拜下风'; className = 'end-white-win'; }
+      else { msg = '⚪ AI获胜！'; subMsg = '东南棋灵，技高一筹'; className = 'end-white-win'; }
+    } else {
+      msg = '🤝 平局！'; subMsg = '旗鼓相当，不分胜负'; className = 'end-draw';
+    }
+
+    let overlay = document.getElementById('gameEndOverlay');
+    let text = document.getElementById('gameEndText');
+    let sub = document.getElementById('gameEndSub');
+    let particles = document.getElementById('endParticles');
+
+    text.innerText = msg; text.className = 'game-end-text ' + className; sub.innerText = subMsg;
+    particles.innerHTML = '';
+    for (let i = 0; i < 20; i++) {
+      let p = document.createElement('div'); p.className = 'end-particle';
+      p.style.left = Math.random() * 100 + '%'; p.style.top = Math.random() * 100 + '%';
+      p.style.animationDelay = Math.random() * 2 + 's';
+      p.style.width = (3 + Math.random() * 6) + 'px'; p.style.height = p.style.width;
+      let colors = ['#e9bc6e', '#f5c542', '#e0816b', '#6c9fd1', '#c8aa77'];
+      p.style.background = colors[Math.floor(Math.random() * colors.length)];
+      particles.appendChild(p);
+    }
+    overlay.classList.add('show');
+  }
+
+  function closeOverlay() { document.getElementById('gameEndOverlay').classList.remove('show'); }
+
+  function undoMove() {
+    if (gameOver || moveHistory.length === 0 || aiThinking) return;
+    let playerNum = playerIsBlack ? 1 : 2;
+    let aiNum = playerIsBlack ? 2 : 1;
+
+    if (moveHistory.length >= 2) {
+      let last = moveHistory[moveHistory.length - 1];
+      if (last.player === aiNum) { board[last.row][last.col] = 0; moveHistory.pop(); }
+    }
+    if (moveHistory.length > 0) {
+      let last = moveHistory[moveHistory.length - 1];
+      if (last.player === playerNum) { board[last.row][last.col] = 0; moveHistory.pop(); }
+    }
+    currentPlayer = playerNum; gameOver = false; winner = null; winLines = []; forbiddenLines = [];
+    document.getElementById('winnerMessage').innerText = '';
+    if (moveHistory.length === 0) document.getElementById('btnUndo').disabled = true;
+    drawBoard(); updateTurnDisplay(); showToast('已悔棋');
+  }
+
+  function restartGame() {
+    if (aiThinking) return;
+    if (!gameOver && moveHistory.length > 0) { if (!confirm('确定要重新开始吗？')) return; }
+    initGame(); showToast('新的一局开始了！');
+  }
+
+  function backToMenu() {
+    if (!gameOver && moveHistory.length > 0) { if (!confirm('确定要返回菜单吗？')) return; }
+    document.getElementById('gameScreen').classList.add('hidden');
+    document.getElementById('setupScreen').classList.remove('hidden');
+    closeOverlay();
+  }
+
+  function updateTurnDisplay() {
+    let turnText, reminderClass;
+    let miniBlack = document.getElementById('miniBlack');
+    let miniWhite = document.getElementById('miniWhite');
+    miniBlack.classList.remove('active-black'); miniWhite.classList.remove('active-white');
+
+    let playerNum = playerIsBlack ? 1 : 2;
+    let aiNum = playerIsBlack ? 2 : 1;
+
+    if (gameOver) {
+      turnText = winner === 0 ? '🤝 平局结束' : (winner === playerNum ? (playerIsBlack ? '⚫ 你获胜了' : '⚪ 你获胜了') : (playerIsBlack ? '⚪ AI获胜' : '⚫ AI获胜'));
+      reminderClass = 'game-over';
+      if (winner === 1) miniBlack.classList.add('active-black');
+      else if (winner === 2) miniWhite.classList.add('active-white');
+    } else if (currentPlayer === playerNum) {
+      turnText = playerIsBlack ? '⚫ 你的回合 — 请落子' : '⚪ 你的回合 — 请落子';
+      reminderClass = 'my-turn';
+      if (playerIsBlack) miniBlack.classList.add('active-black'); else miniWhite.classList.add('active-white');
+    } else {
+      turnText = playerIsBlack ? '⚪ AI思考中 — 请等待' : '⚫ AI思考中 — 请等待';
+      reminderClass = 'ai-turn';
+      if (playerIsBlack) miniWhite.classList.add('active-white'); else miniBlack.classList.add('active-black');
+    }
+
+    document.getElementById('turnIndicator').innerText = turnText;
+    let reminder = document.getElementById('turnReminder');
+    reminder.innerText = turnText; reminder.className = 'turn-reminder ' + reminderClass;
+  }
+
+  function showToast(msg) {
+    let t = document.getElementById('toast');
+    t.innerText = msg; t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2500);
+  }
+
+  // ========== 事件 ==========
+  canvas.addEventListener('click', (e) => {
+    if (gameOver || aiThinking) return;
+    let rect = canvas.getBoundingClientRect();
+    let scale = canvas.width / rect.width;
+    let mx = (e.clientX - rect.left) * scale;
+    let myY = (e.clientY - rect.top) * scale;
+    let col = Math.round((mx - MARGIN) / CELL_SIZE);
+    let row = Math.round((myY - MARGIN) / CELL_SIZE);
+    if (row >= 0 && row < BOARD_SIZE && col >= 0 && col < BOARD_SIZE) playerMove(row, col);
+  });
+
+  window.addEventListener('resize', () => drawBoard());
+
+  // ========== 启动 ==========
+  loadLearnData();
+</script>
+</body>
+</html>
