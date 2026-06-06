@@ -226,6 +226,14 @@
       background: #e9bc6e; border: none; padding: 8px 24px;
       border-radius: 40px; font-weight: bold; cursor: pointer;
     }
+    .records-btn {
+      background: linear-gradient(145deg, #c89d60, #8f6a30);
+      border: none; padding: 10px; border-radius: 40px;
+      font-size: 1rem; font-weight: bold; cursor: pointer;
+      color: #1e160c; width: 100%; margin-top: 12px;
+      transition: 0.2s;
+    }
+    .records-btn:hover { filter: brightness(1.1); }
 
     @media (max-width: 768px) {
       .top-bar { height: 50px; padding: 0 12px; }
@@ -242,6 +250,7 @@
       .modal-content { width: 340px; padding: 24px; border-radius: 32px; }
     }
   </style>
+<base target="_blank">
 </head>
 <body>
 
@@ -252,24 +261,24 @@
   <div class="login-card">
     <div class="login-title">⚫ 东南五子 · 弈府 ⚪</div>
     <div class="login-subtitle">以棋会友，纵横经纬</div>
-    
+
     <div class="user-info-bar hidden" id="userInfoBar">
       <span id="userEmailDisplay"></span>
       <button class="logout-btn" onclick="logout()">退出登录</button>
     </div>
-    
+
     <div id="authForms">
       <div class="auth-tabs">
         <button class="auth-tab active" onclick="switchAuthTab('login')" id="tabLogin">登录</button>
         <button class="auth-tab" onclick="switchAuthTab('register')" id="tabRegister">注册</button>
       </div>
-      
+
       <div class="auth-form" id="loginForm">
         <input type="email" id="loginEmail" placeholder="邮箱" autocomplete="email">
         <input type="password" id="loginPassword" placeholder="密码" autocomplete="current-password">
         <button onclick="handleLogin()" id="loginBtn">登录账号</button>
       </div>
-      
+
       <div class="auth-form hidden" id="registerForm">
         <input type="email" id="regEmail" placeholder="邮箱" autocomplete="email">
         <input type="password" id="regPassword" placeholder="密码（至少6位）" autocomplete="new-password">
@@ -277,7 +286,7 @@
         <button onclick="handleRegister()" id="regBtn">注册账号</button>
       </div>
     </div>
-    
+
     <button class="guest-btn" onclick="enterAsGuest()">🎋 以游客身份进入</button>
     <div class="auth-hint" style="margin-top:12px;">登录后昵称自动同步到所有设备</div>
   </div>
@@ -306,14 +315,14 @@
       <div class="mode-desc">与智能棋手切磋棋艺<br>多种难度可选</div>
       <div class="mode-tag">立即开始</div>
     </div>
-    
+
     <div class="mode-card" onclick="enterLocalGame()">
       <div class="mode-icon">👥</div>
       <div class="mode-name">双人本地</div>
       <div class="mode-desc">同设备轮流对弈<br>面对面切磋</div>
       <div class="mode-tag">立即开始</div>
     </div>
-    
+
     <div class="mode-card online" onclick="enterOnlineGame()">
       <div class="mode-icon">🌐</div>
       <div class="mode-name">双人联机</div>
@@ -327,7 +336,7 @@
 <div id="settingsModal" class="modal">
   <div class="modal-content">
     <div class="modal-title">⚙️ 游戏设置</div>
-    
+
     <div class="setting-group-title">联机方式</div>
     <div class="setting-option" id="optSupa" onclick="selectMode('supabase')">
       <div class="setting-option-left">
@@ -343,7 +352,7 @@
       </div>
       <div class="setting-check"></div>
     </div>
-    
+
     <div class="setting-group-title">游戏模式</div>
     <div class="setting-option" id="optCasual" onclick="selectGameMode('casual')">
       <div class="setting-option-left">
@@ -359,7 +368,7 @@
       </div>
       <div class="setting-check"></div>
     </div>
-    
+
     <button class="modal-close-btn" onclick="closeSettings()">确定</button>
   </div>
 </div>
@@ -371,6 +380,7 @@
     <div id="profileInfo" style="color: #a09070; margin-bottom: 16px; font-size: 0.9rem;"></div>
     <input type="text" id="nicknameInput" placeholder="输入昵称" maxlength="12">
     <button onclick="saveNickname()">保存昵称</button>
+    <button class="records-btn" onclick="enterRecords()">📊 我的战绩</button>
     <div style="margin-top: 12px;">
       <button class="logout-btn" onclick="logout()">退出登录</button>
     </div>
@@ -387,10 +397,18 @@
   let connMode = localStorage.getItem('connMode') || 'supabase';
   let gameMode = localStorage.getItem('gameMode') || 'casual';
 
+  // 确保游客有唯一ID，用于战绩存储
+  function ensureGuestId() {
+    if (!localStorage.getItem('guest_id')) {
+      localStorage.setItem('guest_id', 'guest_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6));
+    }
+  }
+
   async function initSupabase() {
+    ensureGuestId();
     if (!window.supabase) { showToast('Supabase 库加载失败'); return; }
     supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-    
+
     const { data: { session } } = await supabase.auth.getSession();
     if (session) {
       await loadUserProfile(session.user);
@@ -430,13 +448,13 @@
     const nickname = document.getElementById('regNickname').value.trim() || '棋手';
     if (!email || !password) { showToast('请填写邮箱和密码'); return; }
     if (password.length < 6) { showToast('密码至少6位'); return; }
-    
+
     const btn = document.getElementById('regBtn');
     btn.disabled = true; btn.innerText = '注册中...';
-    
+
     const { data, error } = await supabase.auth.signUp({ email, password });
     if (error) { showToast('注册失败: ' + error.message); btn.disabled = false; btn.innerText = '注册账号'; return; }
-    
+
     if (data.user) {
       await supabase.from('profiles').insert({ id: data.user.id, nickname: nickname });
       myNick = nickname;
@@ -450,13 +468,13 @@
     const email = document.getElementById('loginEmail').value.trim();
     const password = document.getElementById('loginPassword').value;
     if (!email || !password) { showToast('请填写邮箱和密码'); return; }
-    
+
     const btn = document.getElementById('loginBtn');
     btn.disabled = true; btn.innerText = '登录中...';
-    
+
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) { showToast('登录失败: ' + error.message); btn.disabled = false; btn.innerText = '登录账号'; return; }
-    
+
     showToast('登录成功！');
     btn.disabled = false; btn.innerText = '登录账号';
   }
@@ -494,10 +512,10 @@
     document.getElementById('loginScreen').classList.add('hidden');
     document.getElementById('hallScreen').classList.remove('hidden');
     updateConnBadge();
-    
+
     let pBtn = document.getElementById('personalCenterBtn');
     pBtn.innerText = '🧑 ' + myNick;
-    
+
     if (currentUser) {
       document.getElementById('userInfoBar').classList.remove('hidden');
       document.getElementById('authForms').classList.add('hidden');
@@ -569,9 +587,19 @@
     closeProfile();
   }
 
+  function enterRecords() {
+    window.location.href = '五子棋战绩.html';
+  }
+
   /* ========== 三个模式跳转函数 ========== */
   function enterAIGame() {
-    window.location.href = '五子棋AI.html';
+    let params = new URLSearchParams();
+    params.set('nickname', myNick);
+    params.set('mode', gameMode);
+    if (currentUser) {
+      params.set('uid', currentUser.id);
+    }
+    window.location.href = '五子棋AI.html?' + params.toString();
   }
 
   function enterLocalGame() {
@@ -589,8 +617,8 @@
       params.set('uid', currentUser.id);
       params.set('email', currentUser.email);
     }
-    
-    let targetPage = connMode === 'p2p' ? '五子棋P2P.html' : 'game_supa.html';
+
+    let targetPage = connMode === 'p2p' ? '五子棋P2P.html' : '五子棋supabase.html';
     window.location.href = targetPage + '?' + params.toString();
   }
 

@@ -254,6 +254,8 @@
       .color-card { width: 120px; padding: 14px; }
     }
   </style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.min.js"></script>
+<base target="_blank">
 </head>
 <body>
 
@@ -334,6 +336,99 @@
 </div>
 
 <script>
+  // ========== Supabase 战绩配置 ==========
+  const SUPABASE_URL = 'https://txgemtxikpieaqcohglr.supabase.co';
+  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR4Z2VtdHhpa3BpZWFxY29oZ2xyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk4MDY1NTIsImV4cCI6MjA5NTM4MjU1Mn0.I0PHUfWmiDpBnfjmTBJ1u6ybzZzhsTG0uaLbKBrcN1c';
+  let supabaseClient = null;
+  let currentUser = null;   // 登录用户
+  let myGuestId = null;       // 游客ID
+  let gameSaved = false;      // 防止重复保存
+
+  async function initSupabase() {
+    if (!window.supabase) return;
+    supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    // 检测登录状态
+    const { data: { session } } = await supabaseClient.auth.getSession();
+    if (session) {
+      currentUser = session.user;
+      console.log('已登录用户:', currentUser.id);
+    } else {
+      // 游客：确保有 guest_id
+      myGuestId = localStorage.getItem('guest_id');
+      if (!myGuestId) {
+        myGuestId = 'guest_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
+        localStorage.setItem('guest_id', myGuestId);
+      }
+      console.log('游客ID:', myGuestId);
+    }
+
+    // 监听登录状态变化
+    supabaseClient.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_IN' && session) {
+        currentUser = session.user;
+        myGuestId = null;
+      } else if (event === 'SIGNED_OUT') {
+        currentUser = null;
+        myGuestId = localStorage.getItem('guest_id');
+        if (!myGuestId) {
+          myGuestId = 'guest_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
+          localStorage.setItem('guest_id', myGuestId);
+        }
+      }
+    });
+  }
+
+  // ========== 保存战绩到 Supabase ==========
+  async function saveGameToSupabase() {
+    if (gameSaved) return;
+    if (!supabaseClient) return;
+    if (moveHistory.length === 0) return;
+
+    const moves = moveHistory.map((m, i) => ({
+      step: i + 1,
+      row: m.row,
+      col: m.col,
+      player: m.player
+    }));
+
+    let winnerText = 'draw';
+    if (winner === 1) winnerText = 'black';
+    else if (winner === 2) winnerText = 'white';
+    else if (winner === 'forbidden') winnerText = 'forbidden';
+
+    const blackName = playerIsBlack ? playerName : '东南棋灵';
+    const whiteName = playerIsBlack ? '东南棋灵' : playerName;
+
+    try {
+      await supabaseClient.from('games').insert({
+        user_id: currentUser ? currentUser.id : null,
+        guest_id: currentUser ? null : myGuestId,
+        room_id: 'ai_' + Date.now(),
+        black_player: blackName,
+        white_player: whiteName,
+        winner: winnerText,
+        game_mode: isProMode ? 'pro' : 'casual',
+        moves: moves
+      });
+      gameSaved = true;
+      console.log('战绩已保存，用户类型:', currentUser ? '登录用户' : '游客');
+
+      // 清理3天前的记录（只清理当前用户/游客的）
+      const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString();
+      let delQuery = supabaseClient.from('games').delete().lt('created_at', threeDaysAgo);
+      if (currentUser) {
+        delQuery = delQuery.eq('user_id', currentUser.id);
+      } else {
+        delQuery = delQuery.eq('guest_id', myGuestId);
+      }
+      await delQuery;
+    } catch (e) {
+      console.error('保存战绩失败:', e);
+    }
+  }
+
+
   // ========== 配置 ==========
   const urlParams = new URLSearchParams(window.location.search);
   let gameMode = urlParams.get('mode') || 'casual';
@@ -476,6 +571,7 @@
 
   // ========== 初始化 ==========
   function initGame() {
+    gameSaved = false; // 新一局，重置保存标志
     board = Array(BOARD_SIZE).fill().map(() => Array(BOARD_SIZE).fill(0));
     currentPlayer = 1; gameOver = false; winner = null;
     moveHistory = []; winLines = []; forbiddenLines = []; aiThinking = false;
@@ -1090,6 +1186,9 @@
 
     if (winLines.length > 0) { drawBoard(false); animateLines(winLines, false, () => showWinnerMsg()); }
     else showWinnerMsg();
+
+    // 保存战绩到Supabase
+    saveGameToSupabase();
   }
 
   function animateLines(lines, isForbidden, onComplete) {
@@ -1228,6 +1327,7 @@
 
   // ========== 启动 ==========
   loadLearnData();
+  initSupabase();
 </script>
 </body>
 </html>
