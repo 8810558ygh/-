@@ -181,6 +181,7 @@
     }
   </style>
 <base target="_blank">
+<base target="_blank">
 </head>
 <body>
 
@@ -280,9 +281,9 @@
     const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString();
     let query = supabase.from('games').delete().lt('created_at', threeDaysAgo);
     if (currentUser) {
-      query = query.eq('user_id', currentUser.id);
+      query = query.or('user_id.eq.' + currentUser.id + ',guest_id.eq.' + currentUser.id);
     } else {
-      query = query.eq('guest_id', guestId);
+      query = query.or('guest_id.eq.' + guestId + ',user_id.eq.' + guestId);
     }
     await query;
   }
@@ -295,9 +296,9 @@
       .order('created_at', { ascending: false });
 
     if (currentUser) {
-      query = query.eq('user_id', currentUser.id);
+      query = query.or('user_id.eq.' + currentUser.id + ',guest_id.eq.' + currentUser.id);
     } else {
-      query = query.eq('guest_id', guestId);
+      query = query.or('guest_id.eq.' + guestId + ',user_id.eq.' + guestId);
     }
 
     const { data, error } = await query;
