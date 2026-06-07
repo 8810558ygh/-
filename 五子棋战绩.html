@@ -96,6 +96,36 @@
       border-color: rgba(224, 129, 107, 0.3);
     }
     .record-time { font-size: 0.8rem; color: #a09070; }
+
+    /* 右侧结果 + 复盘 */
+    .record-right {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 6px;
+    }
+    .result-tag {
+      font-size: 0.85rem;
+      font-weight: bold;
+      padding: 3px 12px;
+      border-radius: 20px;
+      white-space: nowrap;
+    }
+    .result-tag.win {
+      color: #4ade80;
+      background: rgba(74, 222, 128, 0.12);
+      border: 1px solid rgba(74, 222, 128, 0.35);
+    }
+    .result-tag.lose {
+      color: #f87171;
+      background: rgba(248, 113, 113, 0.12);
+      border: 1px solid rgba(248, 113, 113, 0.35);
+    }
+    .result-tag.draw {
+      color: #f5c542;
+      background: rgba(245, 197, 66, 0.12);
+      border: 1px solid rgba(245, 197, 66, 0.3);
+    }
     .record-action {
       font-size: 0.85rem; color: #e9bc6e; font-weight: bold;
       white-space: nowrap;
@@ -312,6 +342,42 @@
     renderList();
   }
 
+  // 判断当前用户在这一局中的结果
+  function getMyResult(g) {
+    let myId = currentUser ? currentUser.id : guestId;
+    let myRole = null;
+
+    // 优先用 ID 匹配
+    if (g.black_id === myId) myRole = 'black';
+    else if (g.white_id === myId) myRole = 'white';
+
+    // 兼容旧数据：用昵称兜底
+    if (!myRole && g.black_player === myNick) myRole = 'black';
+    else if (!myRole && g.white_player === myNick) myRole = 'white';
+
+    if (!myRole) return null; // 观战者或无法识别
+
+    let text, cls, icon;
+    if (g.winner === 'draw') {
+      text = '平局'; cls = 'draw'; icon = '🤝';
+    } else if (g.winner === 'forbidden') {
+      // 黑棋禁手判负 → 白棋胜
+      if (myRole === 'black') {
+        text = '失败'; cls = 'lose'; icon = '❌';
+      } else {
+        text = '胜利'; cls = 'win'; icon = '✅';
+      }
+    } else {
+      // winner 是 black 或 white
+      if (myRole === g.winner) {
+        text = '胜利'; cls = 'win'; icon = '✅';
+      } else {
+        text = '失败'; cls = 'lose'; icon = '❌';
+      }
+    }
+    return { text, cls, icon };
+  }
+
   function renderList() {
     const container = document.getElementById('recordsList');
     const subtitle = document.getElementById('subtitle');
@@ -345,6 +411,13 @@
 
       let modeTag = g.game_mode === 'pro' ? '<span class="record-tag pro">⚔️ 专业</span>' : '<span class="record-tag">🎋 业余</span>';
 
+      // 当前用户这局的个人结果
+      let myRes = getMyResult(g);
+      let resultHtml = '';
+      if (myRes) {
+        resultHtml = `<span class="result-tag ${myRes.cls}">${myRes.icon} ${myRes.text}</span>`;
+      }
+
       html += `
         <div class="record-card" onclick="openReplay(${i})">
           <div class="record-left">
@@ -359,7 +432,10 @@
               <span class="record-time">${timeStr}</span>
             </div>
           </div>
-          <div class="record-action">▶ 复盘</div>
+          <div class="record-right">
+            ${resultHtml}
+            <div class="record-action">▶ 复盘</div>
+          </div>
         </div>`;
     }
     html += '</div>';
