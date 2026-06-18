@@ -4,271 +4,21 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes">
   <title>东南大学 · 五子棋对弈</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="goban.js"></script>
+  <script src="rules.js"></script>
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body {
-      background: #2b1e0f;
-      background-image: radial-gradient(circle at 25% 40%, rgba(210, 160, 90, 0.08) 2%, transparent 2.5%);
-      background-size: 48px 48px;
-      min-height: 100vh;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      font-family: 'Segoe UI', 'Noto Serif SC', '楷体', 'KaiTi', '华文楷体', 'STKaiti', serif;
-      padding: 20px;
-      margin: 0;
-      color: #ecd9b4;
-    }
-    .game-container {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 20px;
-      width: 100%;
-      max-width: 920px;
-    }
-    h1 {
-      font-size: 2.4rem;
-      font-weight: 500;
-      color: #ebc282;
-      text-shadow: 0 0 20px rgba(235, 194, 130, 0.3);
-      letter-spacing: 6px;
-      margin-bottom: 5px;
-      text-align: center;
-    }
-    .mode-tag {
-      font-size: 0.75rem;
-      padding: 4px 14px;
-      border-radius: 20px;
-      background: rgba(245, 197, 66, 0.15);
-      color: #f5c542;
-      border: 1px solid rgba(245, 197, 66, 0.3);
-      margin-top: -10px;
-    }
-    .mode-tag.pro {
-      background: rgba(224, 129, 107, 0.15);
-      color: #e0816b;
-      border-color: rgba(224, 129, 107, 0.3);
+    /* 仅对本页面微调：增大棋盘、下移布局 */
+    .game-container-local {
+      padding-top: 40px;          /* 整体下移 */
     }
     .board-wrap {
-      background: #e1c394;
-      padding: 15px;
-      border-radius: 24px;
-      box-shadow: 0 20px 35px rgba(0,0,0,0.5);
-      width: 100%;
-      max-width: 730px;
-      position: relative;
+      max-width: 820px;           /* 适配更大的画布 */
     }
-    canvas {
-      display: block;
-      border-radius: 16px;
-      background: #eedbbc;
-      cursor: pointer;
-      width: 100%;
-      height: auto;
-    }
-    .info-panel {
-      width: 100%;
-      max-width: 730px;
-      background: rgba(30, 22, 14, 0.9);
-      backdrop-filter: blur(6px);
-      border: 1px solid #bd9a60;
-      border-radius: 24px;
-      padding: 18px 24px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: 15px;
-      box-shadow: 0 8px 18px rgba(0,0,0,0.3);
-    }
-    .turn-indicator {
-      font-size: 1.3rem;
-      font-weight: bold;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      color: #e9bc6e;
-      background: #2b211a;
-      padding: 10px 24px;
-      border-radius: 16px;
-      border: 2px solid transparent;
-      transition: 0.3s;
-    }
-    .turn-indicator.active-black {
-      border-color: #e0816b;
-      box-shadow: 0 0 15px rgba(224, 129, 107, 0.25);
-      background: #3d2218;
-    }
-    .turn-indicator.active-white {
-      border-color: #6c9fd1;
-      box-shadow: 0 0 15px rgba(108, 159, 209, 0.25);
-      background: #1e2a3d;
-    }
+    /* 调整棋子示例大小（UI上的小圆点） */
     .piece-sample {
-      display: inline-block;
-      width: 28px;
-      height: 28px;
-      border-radius: 50%;
-      box-shadow: 0 3px 6px rgba(0,0,0,0.4);
-      margin: 0 5px;
-    }
-    .piece-sample.black {
-      background: radial-gradient(circle at 35% 35%, #6d5a4a, #1a120a);
-    }
-    .piece-sample.white {
-      background: radial-gradient(circle at 35% 35%, #ffffff, #c8bca6);
-    }
-    .buttons {
-      display: flex;
-      gap: 15px;
-      flex-wrap: wrap;
-    }
-    .btn {
-      background: linear-gradient(145deg, #e6bb72, #b57c38);
-      border: none;
-      padding: 10px 22px;
-      border-radius: 36px;
-      font-size: 1rem;
-      font-weight: bold;
-      color: #1e160c;
-      cursor: pointer;
-      transition: all 0.08s ease;
-      box-shadow: 0 4px 8px rgba(0,0,0,0.4);
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      font-family: 'Noto Serif SC', '楷体', 'KaiTi', serif;
-    }
-    .btn:active {
-      transform: translateY(2px);
-      box-shadow: 0 2px 4px rgba(0,0,0,0.4);
-    }
-    .btn:disabled {
-      background: #5a4a3a;
-      color: #888;
-      cursor: not-allowed;
-      box-shadow: none;
-    }
-    .winner-message {
-      font-size: 1.2rem;
-      font-weight: bold;
-      color: #e9bc6e;
-      text-align: center;
-      min-height: 1.5em;
-    }
-    .hint-text {
-      color: #a09070;
-      font-size: 0.9rem;
-      text-align: center;
-      margin-top: 4px;
-    }
-    .forbidden-hint {
-      color: #e0816b;
-      font-size: 0.85rem;
-      text-align: center;
-      margin-top: 4px;
-      opacity: 0;
-      transition: 0.3s;
-    }
-    .forbidden-hint.show { opacity: 1; }
-
-    /* 结束动画 */
-    .game-end-overlay {
-      position: fixed;
-      top: 0; left: 0; width: 100%; height: 100%;
-      background: rgba(10, 6, 2, 0.92);
-      backdrop-filter: blur(12px);
-      z-index: 99999;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-direction: column;
-      visibility: hidden;
-      opacity: 0;
-      transition: opacity 0.5s ease;
-    }
-    .game-end-overlay.show {
-      visibility: visible;
-      opacity: 1;
-    }
-    .game-end-text {
-      font-size: 4rem;
-      font-weight: 900;
-      text-align: center;
-      transform: scale(0.3) translateY(40px);
-      opacity: 0;
-      transition: all 0.7s cubic-bezier(0.34, 1.56, 0.64, 1);
-      letter-spacing: 4px;
-    }
-    .game-end-overlay.show .game-end-text {
-      transform: scale(1) translateY(0);
-      opacity: 1;
-    }
-    .game-end-text.end-black-win {
-      color: #e0816b;
-      text-shadow: 0 0 40px rgba(224, 129, 107, 0.6), 0 0 80px rgba(224, 129, 107, 0.3);
-    }
-    .game-end-text.end-white-win {
-      color: #6c9fd1;
-      text-shadow: 0 0 40px rgba(108, 159, 209, 0.6), 0 0 80px rgba(108, 159, 209, 0.3);
-    }
-    .game-end-text.end-draw {
-      color: #c8aa77;
-      text-shadow: 0 0 40px rgba(200, 170, 119, 0.6), 0 0 80px rgba(200, 170, 119, 0.3);
-    }
-    .game-end-text.end-forbidden {
-      color: #e0816b;
-      text-shadow: 0 0 40px rgba(224, 129, 107, 0.6), 0 0 80px rgba(224, 129, 107, 0.3);
-    }
-    .game-end-sub {
-      margin-top: 24px;
-      font-size: 1.3rem;
-      color: #a09070;
-      opacity: 0;
-      transform: translateY(20px);
-      transition: all 0.5s ease 0.4s;
-    }
-    .game-end-overlay.show .game-end-sub {
-      opacity: 1;
-      transform: translateY(0);
-    }
-    .end-particles {
-      position: absolute;
-      top: 0; left: 0; width: 100%; height: 100%;
-      pointer-events: none;
-      overflow: hidden;
-    }
-    .end-particle {
-      position: absolute;
-      width: 6px; height: 6px;
-      background: #e9bc6e;
-      border-radius: 50%;
-      opacity: 0;
-    }
-    .game-end-overlay.show .end-particle {
-      animation: particleFloat 3s ease-in-out infinite;
-    }
-    @keyframes particleFloat {
-      0% { opacity: 0; transform: translateY(0) scale(0); }
-      20% { opacity: 0.8; transform: translateY(-30px) scale(1); }
-      100% { opacity: 0; transform: translateY(-200px) scale(0.5); }
-    }
-
-    @media (max-width: 768px) {
-      h1 { font-size: 1.6rem; letter-spacing: 3px; }
-      .board-wrap { padding: 8px; border-radius: 16px; }
-      .info-panel {
-        flex-direction: column;
-        align-items: stretch;
-        padding: 14px 16px;
-        gap: 12px;
-      }
-      .turn-indicator { justify-content: center; font-size: 1.1rem; }
-      .buttons { justify-content: center; }
-      .btn { padding: 8px 18px; font-size: 0.9rem; }
-      .game-end-text { font-size: 2.2rem; }
-      .game-end-sub { font-size: 1rem; }
+      width: 32px;
+      height: 32px;
     }
   </style>
 </head>
@@ -280,14 +30,14 @@
   <div class="game-end-sub" id="gameEndSub">黑棋连珠，技高一筹</div>
 </div>
 
-<div class="game-container">
+<div class="game-container-local">
   <h1>⚫ 东南五子 · 弈 ⚪</h1>
   <div class="mode-tag" id="modeTag">🎋 业余模式</div>
-  
+
   <div class="board-wrap">
-    <canvas id="gobanCanvas" width="700" height="700"></canvas>
+    <canvas id="gobanCanvas" width="800" height="800"></canvas>
   </div>
-  
+
   <div class="info-panel">
     <div class="turn-indicator" id="turnDisplay">
       <span>当前落子：</span>
@@ -306,7 +56,6 @@
 
 <script>
   (function() {
-    // ========== 接收初始页面传参 ==========
     const urlParams = new URLSearchParams(window.location.search);
     const gameMode = urlParams.get('mode') || 'casual';
     const isProMode = gameMode === 'pro';
@@ -318,13 +67,12 @@
       document.getElementById('forbiddenHint').classList.add('show');
     }
 
-    // ========== 游戏配置 ==========
     const BOARD_SIZE = 15;
-    const CANVAS_SIZE = 700;
-    const MARGIN = 40;
+    const CANVAS_SIZE = 800;          // 增大画布
+    const MARGIN = 50;                // 增大边距
     const GRID_SIZE = CANVAS_SIZE - MARGIN * 2;
     const CELL_SIZE = GRID_SIZE / (BOARD_SIZE - 1);
-    const stoneRadius = CELL_SIZE * 0.42;
+    const stoneRadius = CELL_SIZE * 0.46;  // 棋子更大
 
     const canvas = document.getElementById('gobanCanvas');
     const ctx = canvas.getContext('2d');
@@ -341,11 +89,11 @@
     let gameOver = false;
     let winner = null;
     let moveHistory = [];
-    let winLines = [];        // 获胜连线（五子）
-    let forbiddenLines = [];  // 禁手连线（两条）
+    let winLines = [];
+    let forbiddenLines = [];
 
     function initBoard() {
-      board = Array(BOARD_SIZE).fill().map(() => Array(BOARD_SIZE).fill(0));
+      board = Rules.initBoard(BOARD_SIZE);
       currentPlayer = 1;
       gameOver = false;
       winner = null;
@@ -385,244 +133,41 @@
       }
     }
 
-    // ========== 禁手检测（专业模式） ==========
-    function checkForbidden(row, col, boardState) {
-      const directions = [[1,0],[0,1],[1,1],[1,-1]];
-      let liveThreeCount = 0;
-      let fourCount = 0;
-      let overline = false;
-      let forbiddenLinesResult = [];
-
-      for (let [dx, dy] of directions) {
-        let cells = [];
-        for (let i = -4; i <= 4; i++) {
-          let r = row + dx * i, c = col + dy * i;
-          if (r < 0 || r >= BOARD_SIZE || c < 0 || c >= BOARD_SIZE) cells.push(2);
-          else cells.push(boardState[r][c]);
-        }
-
-        let count = 1;
-        for (let i = 1; i <= 4; i++) {
-          if (cells[4+i] === 1) count++; else break;
-        }
-        for (let i = 1; i <= 4; i++) {
-          if (cells[4-i] === 1) count++; else break;
-        }
-        if (count > 5) overline = true;
-
-        if (hasLiveThree(cells)) liveThreeCount++;
-        if (hasFour(cells)) fourCount++;
-      }
-
-      // 收集禁手连线
-      if (liveThreeCount >= 2 || fourCount >= 2 || overline) {
-        forbiddenLinesResult = collectForbiddenLines(row, col, boardState);
-      }
-
-      return {
-        sanSan: liveThreeCount >= 2,
-        siSi: fourCount >= 2,
-        overline: overline,
-        lines: forbiddenLinesResult
-      };
-    }
-
-    function collectForbiddenLines(row, col, boardState) {
-      const directions = [[1,0],[0,1],[1,1],[1,-1]];
-      let lines = [];
-
-      for (let [dx, dy] of directions) {
-        let cells = [];
-        let positions = [];
-        for (let i = -4; i <= 4; i++) {
-          let r = row + dx * i, c = col + dy * i;
-          if (r < 0 || r >= BOARD_SIZE || c < 0 || c >= BOARD_SIZE) {
-            cells.push(2);
-            positions.push(null);
-          } else {
-            cells.push(boardState[r][c]);
-            positions.push({r, c});
-          }
-        }
-
-        // 活三连线
-        if (hasLiveThree(cells)) {
-          let line = extractLine(cells, positions, 1, 3);
-          if (line.length >= 3) lines.push(line);
-        }
-        // 四连线
-        if (hasFour(cells)) {
-          let line = extractLine(cells, positions, 1, 4);
-          if (line.length >= 4) lines.push(line);
-        }
-        // 长连
-        let count = 1;
-        for (let i = 1; i <= 4; i++) {
-          if (cells[4+i] === 1) count++; else break;
-        }
-        for (let i = 1; i <= 4; i++) {
-          if (cells[4-i] === 1) count++; else break;
-        }
-        if (count > 5) {
-          let line = [];
-          for (let i = -4; i <= 4; i++) {
-            if (cells[4+i] === 1 && positions[4+i]) line.push(positions[4+i]);
-          }
-          if (line.length > 5) lines.push(line);
-        }
-      }
-      return lines;
-    }
-
-    function extractLine(cells, positions, targetVal, targetCount) {
-      for (let start = 0; start <= 4; start++) {
-        let win = cells.slice(start, start + 5);
-        let pos = positions.slice(start, start + 5);
-        let count = 0, line = [];
-        for (let i = 0; i < 5; i++) {
-          if (win[i] === targetVal) {
-            count++;
-            if (pos[i]) line.push(pos[i]);
-          }
-        }
-        if (count === targetCount && line.length === targetCount) {
-          return line;
-        }
-      }
-      return [];
-    }
-
-    function hasLiveThree(cells) {
-      for (let start = 0; start <= 4; start++) {
-        let win = cells.slice(start, start + 5);
-        let idx = 4 - start;
-        if (idx < 0 || idx >= 5 || win[idx] !== 1) continue;
-        let blackPos = [], emptyPos = [];
-        for (let i = 0; i < 5; i++) {
-          if (win[i] === 1) blackPos.push(i);
-          else if (win[i] === 0) emptyPos.push(i);
-        }
-        if (blackPos.length !== 3 || emptyPos.length !== 2) continue;
-        if (blackPos[1] - blackPos[0] > 2 || blackPos[2] - blackPos[1] > 2) continue;
-        if (emptyPos.includes(0) && emptyPos.includes(4)) return true;
-      }
-      return false;
-    }
-
-    function hasFour(cells) {
-      for (let start = 0; start <= 4; start++) {
-        let win = cells.slice(start, start + 5);
-        let idx = 4 - start;
-        if (idx < 0 || idx >= 5 || win[idx] !== 1) continue;
-        let blackCount = 0, emptyCount = 0;
-        for (let i = 0; i < 5; i++) {
-          if (win[i] === 1) blackCount++;
-          else if (win[i] === 0) emptyCount++;
-        }
-        if (blackCount === 4 && emptyCount === 1) return true;
-      }
-      return false;
-    }
-
-    // ========== 胜负检测 + 收集五连位置 ==========
-    function checkWinWithLine(row, col, player) {
-      if (board[row][col] !== player) return null;
-      const directions = [[1,0],[0,1],[1,1],[1,-1]];
-      for (let d of directions) {
-        let count = 1;
-        const [dx, dy] = d;
-        let line = [{r: row, c: col}];
-        for (let step = 1; step < 5; step++) {
-          const nr = row + dx * step, nc = col + dy * step;
-          if (nr < 0 || nr >= BOARD_SIZE || nc < 0 || nc >= BOARD_SIZE || board[nr][nc] !== player) break;
-          count++; line.push({r: nr, c: nc});
-        }
-        for (let step = 1; step < 5; step++) {
-          const nr = row - dx * step, nc = col - dy * step;
-          if (nr < 0 || nr >= BOARD_SIZE || nc < 0 || nc >= BOARD_SIZE || board[nr][nc] !== player) break;
-          count++; line.unshift({r: nr, c: nc});
-        }
-        if (count >= 5) return line;
-      }
-      return null;
-    }
-
-    function isBoardFull() {
-      for (let r = 0; r < BOARD_SIZE; r++) {
-        for (let c = 0; c < BOARD_SIZE; c++) {
-          if (board[r][c] === 0) return false;
-        }
-      }
-      return true;
-    }
-
-    // ========== 红线动画绘制 ==========
-    function drawWinLines(progress) {
-      ctx.save();
-      ctx.strokeStyle = '#d64531';
-      ctx.lineWidth = 3;
-      ctx.lineCap = 'round';
-      ctx.shadowColor = '#d64531';
-      ctx.shadowBlur = 8;
-
-      for (let line of winLines) {
-        if (line.length < 2) continue;
-        let startX = MARGIN + line[0].c * CELL_SIZE;
-        let startY = MARGIN + line[0].r * CELL_SIZE;
-        let endX = MARGIN + line[line.length - 1].c * CELL_SIZE;
-        let endY = MARGIN + line[line.length - 1].r * CELL_SIZE;
-
-        let curX = startX + (endX - startX) * progress;
-        let curY = startY + (endY - startY) * progress;
-
-        ctx.beginPath();
-        ctx.moveTo(startX, startY);
-        ctx.lineTo(curX, curY);
-        ctx.stroke();
-      }
-      ctx.restore();
-    }
-
-    function drawForbiddenLines(progress) {
-      ctx.save();
-      ctx.strokeStyle = '#d64531';
-      ctx.lineWidth = 3;
-      ctx.lineCap = 'round';
-      ctx.shadowColor = '#d64531';
-      ctx.shadowBlur = 8;
-
-      for (let line of forbiddenLines) {
-        if (line.length < 2) continue;
-        let startX = MARGIN + line[0].c * CELL_SIZE;
-        let startY = MARGIN + line[0].r * CELL_SIZE;
-        let endX = MARGIN + line[line.length - 1].c * CELL_SIZE;
-        let endY = MARGIN + line[line.length - 1].r * CELL_SIZE;
-
-        let curX = startX + (endX - startX) * progress;
-        let curY = startY + (endY - startY) * progress;
-
-        ctx.beginPath();
-        ctx.moveTo(startX, startY);
-        ctx.lineTo(curX, curY);
-        ctx.stroke();
-      }
-      ctx.restore();
+    // ---------- 绘制（使用 Goban） ----------
+    function drawBoard(drawLastMark) {
+      if (drawLastMark === undefined) drawLastMark = !isProMode;
+      const lastMove = moveHistory.length > 0 ? moveHistory[moveHistory.length - 1] : null;
+      Goban.drawBoard(ctx, board, {
+        lastMove: lastMove,
+        winLines: winLines,
+        forbiddenLines: forbiddenLines,
+        drawLastMark: drawLastMark,
+        boardSize: BOARD_SIZE,
+        margin: MARGIN,
+        stoneRadius: stoneRadius
+      });
     }
 
     function animateLines(lines, isForbidden, onComplete) {
       let startTime = null;
-      let duration = 800; // 红线动画时长
-
+      let duration = 800;
       function frame(timestamp) {
         if (!startTime) startTime = timestamp;
         let elapsed = timestamp - startTime;
         let progress = Math.min(elapsed / duration, 1);
-        let ease = 1 - Math.pow(1 - progress, 3); // easeOutCubic
-
-        drawBoard(false); // 不重绘标记
-        if (isForbidden) drawForbiddenLines(ease);
-        else drawWinLines(ease);
-
+        let ease = 1 - Math.pow(1 - progress, 3);
+        Goban.drawBoard(ctx, board, {
+          lastMove: moveHistory.length > 0 ? moveHistory[moveHistory.length - 1] : null,
+          winLines: [],
+          forbiddenLines: [],
+          drawLastMark: false,
+          boardSize: BOARD_SIZE,
+          margin: MARGIN,
+          stoneRadius: stoneRadius
+        });
+        if (lines.length > 0) {
+          Goban.drawLinesProgress(ctx, lines, ease, MARGIN, CELL_SIZE, '#d64531');
+        }
         if (progress < 1) {
           requestAnimationFrame(frame);
         } else {
@@ -632,7 +177,7 @@
       requestAnimationFrame(frame);
     }
 
-    // ========== 游戏结束 ==========
+    // ---------- 游戏结束 ----------
     function endGame(winningPlayer, reason) {
       gameOver = true;
       winner = winningPlayer;
@@ -665,13 +210,21 @@
     function showWinnerMsg(type) {
       let msg, subMsg, className;
       if (type === 'black') {
-        msg = '⚫ 黑方获胜！'; subMsg = '黑棋连珠，技高一筹'; className = 'end-black-win';
+        msg = '⚫ 黑方获胜！';
+        subMsg = '黑棋连珠，技高一筹';
+        className = 'end-black-win';
       } else if (type === 'white') {
-        msg = '⚪ 白方获胜！'; subMsg = '白棋连珠，技高一筹'; className = 'end-white-win';
+        msg = '⚪ 白方获胜！';
+        subMsg = '白棋连珠，技高一筹';
+        className = 'end-white-win';
       } else if (type === 'draw') {
-        msg = '🤝 平局！'; subMsg = '旗鼓相当，不分胜负'; className = 'end-draw';
+        msg = '🤝 平局！';
+        subMsg = '旗鼓相当，不分胜负';
+        className = 'end-draw';
       } else if (type === 'forbidden') {
-        msg = '⛔ 黑棋禁手！'; subMsg = '白棋不战而胜'; className = 'end-forbidden';
+        msg = '⛔ 黑棋禁手！';
+        subMsg = '白棋不战而胜';
+        className = 'end-forbidden';
       }
 
       let overlay = document.getElementById('gameEndOverlay');
@@ -698,23 +251,30 @@
       }
 
       overlay.classList.add('show');
-      setTimeout(() => { closeGameEnd(); }, 3500);
+      setTimeout(() => {
+        closeGameEnd();
+      }, 3500);
     }
 
     function closeGameEnd() {
       document.getElementById('gameEndOverlay').classList.remove('show');
     }
 
-    // ========== 落子逻辑 ==========
+    // ---------- 落子 ----------
     function placePiece(row, col) {
-      if (gameOver) { alert('对局已结束，请开启新的一局。'); return false; }
+      if (gameOver) {
+        alert('对局已结束，请开启新的一局。');
+        return false;
+      }
       if (row < 0 || row >= BOARD_SIZE || col < 0 || col >= BOARD_SIZE) return false;
-      if (board[row][col] !== 0) { alert('此位置已有棋子，请选择空位。'); return false; }
+      if (board[row][col] !== 0) {
+        alert('此位置已有棋子，请选择空位。');
+        return false;
+      }
 
-      // 专业模式：黑棋禁手检测
       if (isProMode && currentPlayer === 1) {
         board[row][col] = 1;
-        let forbidden = checkForbidden(row, col, board);
+        let forbidden = Rules.checkForbidden(row, col, board, BOARD_SIZE);
         board[row][col] = 0;
 
         if (forbidden.sanSan || forbidden.siSi || forbidden.overline) {
@@ -727,18 +287,16 @@
         }
       }
 
-      // 正常落子
       board[row][col] = currentPlayer;
       moveHistory.push({ row, col, player: currentPlayer });
 
-      // 检查五连
-      let winLine = checkWinWithLine(row, col, currentPlayer);
+      let winLine = Rules.checkWinWithLine(row, col, currentPlayer, board, BOARD_SIZE);
       if (winLine) {
         winLines = [winLine];
         drawBoard(false);
         endGame(currentPlayer);
         return true;
-      } else if (isBoardFull()) {
+      } else if (Rules.isBoardFull(board, BOARD_SIZE)) {
         drawBoard();
         endGame(0);
         return true;
@@ -750,10 +308,16 @@
       return true;
     }
 
-    // ========== 悔棋 ==========
+    // ---------- 悔棋 ----------
     function undoMove() {
-      if (gameOver) { alert('对局已结束，无法悔棋。请重新开始。'); return; }
-      if (moveHistory.length === 0) { alert('没有棋子可以悔棋。'); return; }
+      if (gameOver) {
+        alert('对局已结束，无法悔棋。请重新开始。');
+        return;
+      }
+      if (moveHistory.length === 0) {
+        alert('没有棋子可以悔棋。');
+        return;
+      }
       const lastMove = moveHistory.pop();
       board[lastMove.row][lastMove.col] = 0;
       currentPlayer = lastMove.player;
@@ -761,83 +325,7 @@
       drawBoard();
     }
 
-    // ========== 绘制棋盘 ==========
-    function drawBoard(drawLastMark) {
-      if (drawLastMark === undefined) drawLastMark = !isProMode;
-
-      if (!ctx) return;
-      ctx.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
-      ctx.fillStyle = '#eedbbc';
-      ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
-
-      ctx.strokeStyle = '#5c3a1e';
-      ctx.lineWidth = 2;
-      ctx.strokeRect(MARGIN - 2, MARGIN - 2, GRID_SIZE + 4, GRID_SIZE + 4);
-
-      ctx.strokeStyle = '#6b4c2c';
-      ctx.lineWidth = 1.5;
-      for (let i = 0; i < BOARD_SIZE; i++) {
-        let pos = MARGIN + i * CELL_SIZE;
-        ctx.beginPath(); ctx.moveTo(MARGIN, pos); ctx.lineTo(MARGIN + GRID_SIZE, pos); ctx.stroke();
-        ctx.beginPath(); ctx.moveTo(pos, MARGIN); ctx.lineTo(pos, MARGIN + GRID_SIZE); ctx.stroke();
-      }
-
-      const stars = [[3,3],[3,7],[3,11],[7,3],[7,7],[7,11],[11,3],[11,7],[11,11]];
-      ctx.fillStyle = '#4a3a28';
-      for (let [r, c] of stars) {
-        let x = MARGIN + c * CELL_SIZE, y = MARGIN + r * CELL_SIZE;
-        ctx.beginPath(); ctx.arc(x, y, 4, 0, Math.PI * 2); ctx.fill();
-      }
-
-      for (let r = 0; r < BOARD_SIZE; r++) {
-        for (let c = 0; c < BOARD_SIZE; c++) {
-          if (board[r][c] === 0) continue;
-          let x = MARGIN + c * CELL_SIZE, y = MARGIN + r * CELL_SIZE;
-          drawStone(x, y, board[r][c]);
-        }
-      }
-
-      // 业余模式：最后一步红框标记
-      if (drawLastMark && moveHistory.length > 0 && !gameOver) {
-        let last = moveHistory[moveHistory.length - 1];
-        let x = MARGIN + last.col * CELL_SIZE, y = MARGIN + last.row * CELL_SIZE;
-        ctx.strokeStyle = '#d64531';
-        ctx.lineWidth = 2.5;
-        ctx.beginPath();
-        ctx.rect(x - stoneRadius - 3, y - stoneRadius - 3, (stoneRadius + 3) * 2, (stoneRadius + 3) * 2);
-        ctx.stroke();
-      }
-    }
-
-    function drawStone(x, y, player) {
-      ctx.beginPath();
-      ctx.arc(x + 2, y + 2, stoneRadius, 0, Math.PI * 2);
-      ctx.fillStyle = 'rgba(0,0,0,0.25)';
-      ctx.fill();
-
-      let grad = ctx.createRadialGradient(
-        x - stoneRadius * 0.3, y - stoneRadius * 0.3, stoneRadius * 0.1,
-        x, y, stoneRadius
-      );
-      if (player === 1) {
-        grad.addColorStop(0, '#6d5a4a');
-        grad.addColorStop(0.3, '#3d2e1f');
-        grad.addColorStop(1, '#1a120a');
-      } else {
-        grad.addColorStop(0, '#ffffff');
-        grad.addColorStop(0.3, '#f0e6d3');
-        grad.addColorStop(1, '#c8bca6');
-      }
-      ctx.beginPath(); ctx.arc(x, y, stoneRadius, 0, Math.PI * 2);
-      ctx.fillStyle = grad; ctx.fill();
-
-      ctx.beginPath();
-      ctx.arc(x - stoneRadius * 0.25, y - stoneRadius * 0.25, stoneRadius * 0.35, 0, Math.PI * 2);
-      ctx.fillStyle = player === 1 ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.6)';
-      ctx.fill();
-    }
-
-    // ========== 事件绑定 ==========
+    // ---------- 事件绑定 ----------
     function handleCanvasClick(e) {
       if (gameOver) return;
       const rect = canvas.getBoundingClientRect();

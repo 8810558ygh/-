@@ -4,466 +4,20 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>东南五子 · 远程对弈</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.min.js"></script>
   <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+  <script src="goban.js"></script>
+  <script src="rules.js"></script>
+  <script src="online-ui.js"></script>
+  <script src="online-core.js"></script>
+  <script src="online-p2p.js"></script>
+  <base target="_blank">
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Noto Serif SC', '楷体', 'KaiTi', serif; }
-    body {
-      background: #2b1e0f;
-      background-image: radial-gradient(circle at 25% 40%, rgba(210, 160, 90, 0.08) 2%, transparent 2.5%);
-      background-size: 48px 48px;
-      min-height: 100vh;
-      color: #ecd9b4;
-    }
-
-    .hidden { display: none !important; }
-    .toast {
-      position: fixed; bottom: 30px; left: 50%;
-      transform: translateX(-50%) translateY(100px);
-      background: rgba(30, 20, 10, 0.96);
-      backdrop-filter: blur(8px);
-      color: #f5c542;
-      border: 1px solid rgba(245, 197, 66, 0.5);
-      padding: 12px 28px; border-radius: 40px;
-      font-size: 0.9rem; z-index: 10000;
-      opacity: 0; transition: 0.3s; pointer-events: none; white-space: nowrap;
-    }
-    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
-
-    .top-bar {
-      position: fixed; top: 0; left: 0; right: 0; height: 60px;
-      background: rgba(25, 18, 10, 0.85); backdrop-filter: blur(12px);
-      border-bottom: 1px solid rgba(230, 190, 110, 0.3);
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 0 28px; z-index: 100;
-    }
-    .logo { font-family: 'Orbitron', monospace; font-size: 1.2rem; font-weight: 700; color: #e9bc6e; letter-spacing: 2px; }
-    .top-right { display: flex; gap: 20px; align-items: center; }
-    .personal-btn {
-      background: rgba(200, 160, 100, 0.2); border: 1px solid #e9bc6e;
-      border-radius: 40px; padding: 6px 16px; font-size: 0.85rem; transition: 0.2s;
-      color: #ecd9b4;
-    }
-    .room-code-badge {
-      font-family: monospace; background: #2a2013;
-      padding: 5px 12px; border-radius: 32px; letter-spacing: 1px;
-      cursor: pointer; border: 1px solid #bd9a60;
-      min-width: 80px;
-      text-align: center;
-    }
-    .conn-status { font-size: 0.8rem; display: flex; align-items: center; gap: 6px; }
-    .conn-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
-    .conn-online { background: #40c980; box-shadow: 0 0 5px #40c980; }
-    .conn-offline { background: #e35f5f; }
-    .conn-connecting { background: #e9bc6e; animation: pulse 1s infinite; }
-    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
-
-    #entryScreen {
-      min-height: 100vh; display: flex; flex-direction: column;
-      align-items: center; justify-content: center; gap: 40px; padding: 20px;
-    }
-    .entry-card {
-      background: rgba(0, 0, 0, 0.55); backdrop-filter: blur(8px);
-      padding: 40px 50px; border-radius: 60px; border: 1px solid #e9bc6e; text-align: center;
-      max-width: 420px;
-      width: 100%;
-    }
-    .entry-title { font-size: 2.3rem; font-weight: 800; color: #ebc282; margin-bottom: 20px; }
-    
-    .user-info-display {
-      margin: 20px 0;
-      padding: 16px 24px;
-      background: rgba(0, 0, 0, 0.3);
-      border-radius: 24px;
-      border: 1px solid rgba(230, 190, 110, 0.3);
-    }
-    .user-info-display .nick {
-      font-size: 1.2rem;
-      color: #e9bc6e;
-      font-weight: bold;
-    }
-    .user-info-display .email {
-      font-size: 0.85rem;
-      color: #a09070;
-      margin-top: 4px;
-    }
-
-    .entry-buttons { display: flex; gap: 30px; justify-content: center; flex-wrap: wrap; margin-top: 10px; }
-    .entry-btn {
-      background: linear-gradient(145deg, #e6bb72, #b57c38); border: none;
-      padding: 12px 36px; border-radius: 48px; font-size: 1.2rem; font-weight: bold;
-      cursor: pointer; transition: 0.1s linear; box-shadow: 0 4px 8px black; color: #1e160c;
-    }
-    .entry-btn:active { transform: translateY(2px); }
-    .join-input-area { margin-top: 25px; display: flex; gap: 12px; justify-content: center; }
-    .join-input-area input {
-      background: #fef3e2; border: none; padding: 10px 20px;
-      border-radius: 60px; font-size: 1rem; width: 180px; text-align: center; font-family: monospace;
-    }
-
-    #lobbyScreen { padding-top: 90px; padding-bottom: 40px; display: flex; flex-direction: column; align-items: center; }
-    .lobby-mode-bar {
-      text-align: center;
-      margin-bottom: 12px;
-      font-size: 1.15rem;
-      color: #e9bc6e;
-      font-weight: bold;
-      letter-spacing: 1px;
-      background: rgba(0,0,0,0.3);
-      padding: 10px 28px;
-      border-radius: 40px;
-      border: 1px solid rgba(230, 190, 110, 0.25);
-    }
-    .lobby-layout {
-      display: flex; gap: 28px; flex-wrap: wrap; justify-content: center;
-      max-width: 1300px; margin-top: 10px;
-    }
-    .lobby-column {
-      background: rgba(35, 25, 15, 0.55); backdrop-filter: blur(4px);
-      border-radius: 32px; padding: 20px;
-      border: 1px solid rgba(220, 180, 100, 0.3);
-      min-width: 240px; max-width: 280px;
-    }
-    .lobby-column-header {
-      font-size: 1.3rem; font-weight: bold; text-align: center;
-      border-bottom: 2px solid; margin-bottom: 18px; padding-bottom: 6px;
-    }
-    .col-black .lobby-column-header { color: #e0816b; border-color: #b15a44; }
-    .col-white .lobby-column-header { color: #6c9fd1; border-color: #3e6d9b; }
-    .col-spec .lobby-column-header { color: #c6974e; border-color: #a7732c; }
-    .seat-card {
-      background: rgba(20, 15, 8, 0.7); border: 2px solid rgba(210, 170, 90, 0.4);
-      border-radius: 24px; padding: 16px; margin-bottom: 14px;
-      display: flex; flex-direction: column; align-items: center; gap: 8px;
-      cursor: pointer; transition: 0.15s;
-    }
-    .seat-card:hover:not(.occupied-seat) { border-color: #ebc282; transform: translateY(-2px); background: #2f241bc9; }
-    .occupied-seat { cursor: default; opacity: 0.85; }
-    .seat-card.is-me-seat { border-color: #f5c542; box-shadow: 0 0 12px rgba(245,197,66,0.3); background: #3e2e1d; }
-    .seat-avatar {
-      width: 56px; height: 56px; border-radius: 56px;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 1.5rem; font-weight: bold;
-    }
-    .seat-avatar.empty-avatar { background: #372d1e80; border: 2px dashed #bd9a60; color: #bd9a60; }
-    .seat-avatar.black-avatar { background: radial-gradient(#5e4b38, #2c1d10); color: #e9dbbc; }
-    .seat-avatar.white-avatar { background: radial-gradient(#f7f2e0, #cfb690); color: #2f2418; }
-    .seat-avatar.spec-avatar { background: radial-gradient(#6d532f, #4a351b); color: #ffeaad; }
-    .seat-name { font-weight: 700; }
-    .start-game-btn {
-      margin-top: 30px; background: linear-gradient(145deg, #e6bb72, #b57c38);
-      border: none; padding: 12px 48px; border-radius: 60px;
-      font-size: 1.2rem; font-weight: bold; cursor: pointer;
-      display: none; box-shadow: 0 5px 0 #6f441e;
-    }
-    .start-game-btn.show { display: block; }
-    .start-game-btn:active { transform: translateY(2px); box-shadow: 0 2px 0 #6f441e; }
-
-    #gameScreen { padding-top: 70px; min-height: 100vh; }
-    .game-container {
-      display: flex;
-      width: 100%;
-      margin: 0;
-      background: #1f160e;
-      border-radius: 0;
-      overflow: hidden;
-      min-height: calc(100vh - 70px);
-    }
-    .board-panel {
-      flex: 3;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      padding: 15px;
-      min-width: 0;
-    }
-    .board-wrap {
-      background: #e1c394;
-      padding: 15px;
-      border-radius: 24px;
-      box-shadow: 0 20px 35px rgba(0,0,0,0.5);
-      width: 100%;
-      max-width: 920px;
-    }
-    canvas {
-      display: block;
-      border-radius: 16px;
-      background: #eedbbc;
-      cursor: pointer;
-      width: 100%;
-      height: auto;
-    }
-    .chat-panel {
-      flex: 1;
-      background: rgba(30, 22, 14, 0.9);
-      backdrop-filter: blur(6px);
-      border-left: 1px solid #bd9a60;
-      display: flex;
-      flex-direction: column;
-      min-width: 320px;
-      max-width: 400px;
-      height: calc(100vh - 70px);
-    }
-
-    .game-info {
-      padding: 18px 16px;
-      border-bottom: 2px solid #5e4a31;
-      font-size: 1.05rem;
-      line-height: 1.8;
-    }
-    .game-info > div { margin-bottom: 4px; }
-    .mini-players {
-      display: flex;
-      gap: 12px;
-      margin-top: 14px;
-    }
-    .mini-card {
-      flex: 1;
-      background: #2b211a;
-      border-radius: 16px;
-      padding: 12px 8px;
-      text-align: center;
-      border: 2px solid transparent;
-      transition: 0.3s;
-      font-size: 0.95rem;
-    }
-    .mini-card.active-black {
-      border-color: #e0816b;
-      box-shadow: 0 0 15px rgba(224, 129, 107, 0.25);
-      background: #3d2218;
-    }
-    .mini-card.active-white {
-      border-color: #6c9fd1;
-      box-shadow: 0 0 15px rgba(108, 159, 209, 0.25);
-      background: #1e2a3d;
-    }
-    .mini-card div:first-child { font-weight: bold; margin-bottom: 4px; }
-    .mini-card div:last-child { font-weight: 700; color: #e9bc6e; }
-    .turn-indicator {
-      font-weight: 800;
-      margin: 14px 0 8px;
-      font-size: 1.5rem;
-      color: #f5c542;
-      text-shadow: 0 0 12px rgba(245, 197, 66, 0.4);
-      text-align: center;
-      padding: 8px;
-      background: rgba(245, 197, 66, 0.08);
-      border-radius: 12px;
-      border: 1px solid rgba(245, 197, 66, 0.2);
-    }
-    #winnerMessage {
-      color: #e9bc6e;
-      font-size: 1.1rem;
-      font-weight: bold;
-      text-align: center;
-      margin-top: 6px;
-      min-height: 1.5em;
-    }
-
-    .chat-messages {
-      flex: 1;
-      overflow-y: auto;
-      padding: 12px;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-    .chat-msg { max-width: 90%; padding: 6px 12px; border-radius: 18px; font-size: 0.85rem; }
-    .chat-msg.me { align-self: flex-end; background: #e9bc6e; color: #211c12; }
-    .chat-msg.other { background: #4a3a28; color: #f7efda; }
-    .chat-msg.system { align-self: center; background: #2e241b; color: #e9bc6e; font-size: 0.75rem; }
-    .chat-input-area { display: flex; padding: 12px; gap: 8px; border-top: 1px solid #5e4a31; }
-    .chat-input-area input {
-      flex: 1; background: #2f241b; border: 1px solid #b69054;
-      border-radius: 40px; padding: 8px 15px; color: #f2e1c0;
-    }
-    .game-btn {
-      background: #c89d60; border: none; border-radius: 30px;
-      padding: 6px 18px; font-weight: bold; cursor: pointer;
-    }
-    .game-btn:disabled {
-      background: #5a4a3a;
-      cursor: not-allowed;
-      opacity: 0.5;
-    }
-
-    .game-end-overlay {
-      position: fixed;
-      top: 0; left: 0; width: 100%; height: 100%;
-      background: rgba(10, 6, 2, 0.92);
-      backdrop-filter: blur(12px);
-      z-index: 99999;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-direction: column;
-      visibility: hidden;
-      opacity: 0;
-      transition: opacity 0.5s ease;
-    }
-    .game-end-overlay.show {
-      visibility: visible;
-      opacity: 1;
-    }
-    .game-end-text {
-      font-size: 4rem;
-      font-weight: 900;
-      text-align: center;
-      transform: scale(0.3) translateY(40px);
-      opacity: 0;
-      transition: all 0.7s cubic-bezier(0.34, 1.56, 0.64, 1);
-      letter-spacing: 4px;
-    }
-    .game-end-overlay.show .game-end-text {
-      transform: scale(1) translateY(0);
-      opacity: 1;
-    }
-    .game-end-text.end-black-win {
-      color: #e0816b;
-      text-shadow: 0 0 40px rgba(224, 129, 107, 0.6), 0 0 80px rgba(224, 129, 107, 0.3);
-    }
-    .game-end-text.end-white-win {
-      color: #6c9fd1;
-      text-shadow: 0 0 40px rgba(108, 159, 209, 0.6), 0 0 80px rgba(108, 159, 209, 0.3);
-    }
-    .game-end-text.end-draw {
-      color: #c8aa77;
-      text-shadow: 0 0 40px rgba(200, 170, 119, 0.6), 0 0 80px rgba(200, 170, 119, 0.3);
-    }
-    .game-end-text.end-forbidden {
-      color: #e0816b;
-      text-shadow: 0 0 40px rgba(224, 129, 107, 0.6), 0 0 80px rgba(224, 129, 107, 0.3);
-    }
-    .game-end-sub {
-      margin-top: 24px;
-      font-size: 1.3rem;
-      color: #a09070;
-      opacity: 0;
-      transform: translateY(20px);
-      transition: all 0.5s ease 0.4s;
-    }
-    .game-end-overlay.show .game-end-sub {
-      opacity: 1;
-      transform: translateY(0);
-    }
-
-    .turn-reminder {
-      text-align: center;
-      font-size: 2.2rem;
-      font-weight: 900;
-      padding: 16px 28px;
-      margin-bottom: 16px;
-      border-radius: 20px;
-      transition: all 0.3s ease;
-      letter-spacing: 3px;
-      text-shadow: 0 2px 8px rgba(0,0,0,0.3);
-    }
-    .turn-reminder.my-turn {
-      background: rgba(224, 129, 107, 0.2);
-      color: #e0816b;
-      border: 3px solid rgba(224, 129, 107, 0.6);
-      box-shadow: 0 0 30px rgba(224, 129, 107, 0.35), inset 0 0 20px rgba(224, 129, 107, 0.1);
-      animation: turnPulse 1.2s ease-in-out infinite;
-    }
-    .turn-reminder.opponent-turn {
-      background: rgba(108, 159, 209, 0.2);
-      color: #6c9fd1;
-      border: 3px solid rgba(108, 159, 209, 0.6);
-      box-shadow: 0 0 30px rgba(108, 159, 209, 0.25), inset 0 0 20px rgba(108, 159, 209, 0.1);
-    }
-    .turn-reminder.waiting {
-      background: rgba(200, 170, 119, 0.2);
-      color: #c8aa77;
-      border: 3px solid rgba(200, 170, 119, 0.6);
-      box-shadow: 0 0 30px rgba(200, 170, 119, 0.25), inset 0 0 20px rgba(200, 170, 119, 0.1);
-    }
-    @keyframes turnPulse {
-      0%, 100% { transform: scale(1); box-shadow: 0 0 30px rgba(224, 129, 107, 0.35), inset 0 0 20px rgba(224, 129, 107, 0.1); }
-      50% { transform: scale(1.05); box-shadow: 0 0 50px rgba(224, 129, 107, 0.55), inset 0 0 30px rgba(224, 129, 107, 0.2); }
-    }
-
-    .end-particles {
-      position: absolute;
-      top: 0; left: 0; width: 100%; height: 100%;
-      pointer-events: none;
-      overflow: hidden;
-    }
-    .end-particle {
-      position: absolute;
-      width: 6px; height: 6px;
-      background: #e9bc6e;
-      border-radius: 50%;
-      opacity: 0;
-    }
-    .game-end-overlay.show .end-particle {
-      animation: particleFloat 3s ease-in-out infinite;
-    }
-    @keyframes particleFloat {
-      0% { opacity: 0; transform: translateY(0) scale(0); }
-      20% { opacity: 0.8; transform: translateY(-30px) scale(1); }
-      100% { opacity: 0; transform: translateY(-200px) scale(0.5); }
-    }
-
-    @media (max-width: 768px) {
-      .top-bar { height: 50px; padding: 0 12px; }
-      .logo { font-size: 0.9rem; letter-spacing: 1px; }
-      .top-right { gap: 8px; }
-      .personal-btn { padding: 4px 10px; font-size: 0.75rem; }
-      .room-code-badge { padding: 4px 8px; font-size: 0.8rem; min-width: 60px; }
-      .conn-status { font-size: 0.7rem; }
-
-      #entryScreen { padding: 10px; gap: 20px; }
-      .entry-card { padding: 24px 20px; border-radius: 32px; width: 100%; max-width: 360px; }
-      .entry-title { font-size: 1.5rem; }
-      .entry-buttons { gap: 15px; }
-      .entry-btn { padding: 10px 24px; font-size: 1rem; }
-      .join-input-area { flex-direction: column; align-items: center; gap: 8px; }
-      .join-input-area input { width: 160px; }
-      .user-info-display { padding: 12px 16px; }
-
-      #lobbyScreen { padding-top: 70px; padding-bottom: 20px; }
-      .lobby-mode-bar { font-size: 1rem; padding: 8px 20px; }
-      .lobby-layout { gap: 12px; padding: 0 10px; }
-      .lobby-column { min-width: 140px; max-width: 100%; padding: 12px; border-radius: 20px; }
-      .lobby-column-header { font-size: 1rem; margin-bottom: 10px; }
-      .seat-card { padding: 10px; margin-bottom: 8px; border-radius: 16px; }
-      .seat-avatar { width: 40px; height: 40px; font-size: 1.1rem; }
-      .seat-name { font-size: 0.85rem; }
-      .seat-status { font-size: 0.75rem; }
-      .start-game-btn { padding: 10px 32px; font-size: 1rem; }
-
-      #gameScreen { padding-top: 50px; }
-      .game-container { flex-direction: column; border-radius: 0; margin: 0; min-height: auto; }
-      .board-panel { flex: none; padding: 8px; }
-      .board-wrap { padding: 8px; border-radius: 16px; max-width: 100%; }
-      .chat-panel {
-        border-left: none;
-        border-top: 2px solid #bd9a60;
-        height: 280px;
-        min-width: auto;
-        max-width: 100%;
-        flex: none;
-      }
-      .game-info { padding: 10px; font-size: 0.9rem; line-height: 1.6; }
-      .mini-players { gap: 8px; margin-top: 8px; }
-      .mini-card { padding: 8px 4px; font-size: 0.8rem; }
-      .turn-indicator { font-size: 1.1rem; margin: 8px 0; padding: 6px; }
-      .chat-input-area { padding: 8px; }
-      .chat-input-area input { padding: 6px 12px; }
-      .game-btn { padding: 5px 14px; font-size: 0.85rem; }
-
-      .game-end-text { font-size: 2.2rem; }
-      .game-end-sub { font-size: 1rem; }
-    }
-
-    @media (max-width: 400px) {
-      .logo { font-size: 0.75rem; }
-      .entry-title { font-size: 1.2rem; }
-      .lobby-column { min-width: 120px; padding: 8px; }
-      .seat-avatar { width: 36px; height: 36px; font-size: 1rem; }
-    }
-  
-</style>
-<base target="_blank">
+    #gameScreen { padding-top: 80px; }
+    .board-wrap { max-width: 820px; }
+    .turn-reminder { font-size: 2.0rem; padding: 12px 24px; }
+  </style>
 </head>
 <body>
 
@@ -480,12 +34,10 @@
 <div id="entryScreen">
   <div class="entry-card">
     <div class="entry-title">⚫ 五子棋 · 远程对弈 ⚪</div>
-    
     <div class="user-info-display" id="userInfoDisplay">
       <div class="nick">👤 <span id="displayNickname">游客</span></div>
       <div class="email" id="displayEmailArea"></div>
     </div>
-
     <div class="entry-buttons">
       <button class="entry-btn" id="createRoomBtn">🏮 创建房间</button>
       <button class="entry-btn" id="showJoinBtn">🎋 加入房间</button>
@@ -526,11 +78,11 @@
 </div>
 
 <div id="gameScreen" class="hidden">
-  <div class="game-container">
+  <div class="game-container-online">
     <div class="board-panel">
       <div class="board-wrap">
         <div id="turnReminder" class="turn-reminder">⏳ 等待对局开始...</div>
-        <canvas id="gobanCanvas" width="700" height="700"></canvas>
+        <canvas id="gobanCanvas" width="800" height="800"></canvas>
         <div style="display: flex; justify-content: center; gap: 15px; margin-top: 15px;">
           <button class="game-btn" id="btnSurrender" onclick="sendSurrender()">🏳️ 投降</button>
           <button class="game-btn" id="btnDraw" onclick="sendDrawRequest()">🤝 平局</button>
@@ -565,953 +117,329 @@
 </div>
 
 <script>
-  const ICE_SERVERS = [
-    { urls: 'stun:stun.l.google.com:19302' },
-    { urls: 'stun:stun1.l.google.com:19302' },
-    {
-      urls: 'turn:openrelay.metered.ca:80',
-      username: 'openrelayproject',
-      credential: 'openrelayproject'
-    },
-    {
-      urls: 'turn:openrelay.metered.ca:443',
-      username: 'openrelayproject',
-      credential: 'openrelayproject'
-    },
-    {
-      urls: 'turn:openrelay.metered.ca:443?transport=tcp',
-      username: 'openrelayproject',
-      credential: 'openrelayproject'
-    }
-  ];
+  // ===================== Supabase 战绩配置（带重试机制） =====================
+  const SUPABASE_URL = 'https://txgemtxikpieaqcohglr.supabase.co';
+  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR4Z2VtdHhpa3BpZWFxY29oZ2xyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk4MDY1NTIsImV4cCI6MjA5NTM4MjU1Mn0.I0PHUfWmiDpBnfjmTBJ1u6ybzZzhsTG0uaLbKBrcN1c';
+  let supabaseClient = null;
+  let currentUser = null;
+  let myGuestId = null;
+  let gameSaved = false;
+  let initAttempts = 0;
+  const MAX_INIT_ATTEMPTS = 15;
 
+  async function initSupabase() {
+    // 如果已初始化，直接返回
+    if (supabaseClient) return;
+
+    // 检查 window.supabase 是否可用
+    if (!window.supabase) {
+      initAttempts++;
+      if (initAttempts <= MAX_INIT_ATTEMPTS) {
+        console.warn(`⚠️ [P2P] Supabase 库未加载，等待重试 (${initAttempts}/${MAX_INIT_ATTEMPTS})...`);
+        return new Promise(resolve => {
+          setTimeout(() => resolve(initSupabase()), 300);
+        });
+      } else {
+        console.error('❌ [P2P] Supabase 库加载失败，请检查网络或 CDN 地址');
+        return;
+      }
+    }
+
+    try {
+      supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      const { data: { session } } = await supabaseClient.auth.getSession();
+      if (session) {
+        currentUser = session.user;
+        console.log('✅ [P2P] 已登录用户:', currentUser.id);
+      } else {
+        myGuestId = localStorage.getItem('guest_id');
+        if (!myGuestId) {
+          myGuestId = 'guest_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
+          localStorage.setItem('guest_id', myGuestId);
+        }
+        console.log('✅ [P2P] 游客 ID:', myGuestId);
+      }
+      // 监听登录状态变化
+      supabaseClient.auth.onAuthStateChange((event, session) => {
+        if (event === 'SIGNED_IN' && session) {
+          currentUser = session.user;
+          myGuestId = null;
+          console.log('✅ [P2P] 登录状态变化: 已登录', currentUser.id);
+        } else if (event === 'SIGNED_OUT') {
+          currentUser = null;
+          myGuestId = localStorage.getItem('guest_id');
+          if (!myGuestId) {
+            myGuestId = 'guest_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
+            localStorage.setItem('guest_id', myGuestId);
+          }
+          console.log('✅ [P2P] 登录状态变化: 已退出，游客 ID:', myGuestId);
+        }
+      });
+    } catch (e) {
+      console.error('❌ [P2P] 初始化 Supabase 失败:', e);
+    }
+  }
+
+  async function saveGameToSupabase() {
+    console.log('📊 [P2P] 尝试保存战绩...');
+    // 确保客户端已初始化
+    if (!supabaseClient) {
+      console.warn('⚠️ [P2P] Supabase 客户端未初始化，尝试初始化...');
+      await initSupabase();
+      if (!supabaseClient) {
+        console.error('❌ [P2P] Supabase 客户端仍为 null，放弃保存');
+        return;
+      }
+    }
+
+    // 防止重复保存
+    if (gameSaved) {
+      console.log('⏭️ [P2P] 已保存过，跳过');
+      return;
+    }
+
+    if (!window.GAME.moveHistory || window.GAME.moveHistory.length === 0) {
+      console.warn('⚠️ [P2P] 没有落子记录，跳过保存');
+      return;
+    }
+    if (!window.GAME.gameOver) {
+      console.warn('⚠️ [P2P] 游戏未结束，跳过保存');
+      return;
+    }
+
+    const moves = window.GAME.moveHistory.map((m, i) => ({
+      step: i + 1,
+      row: m.row,
+      col: m.col,
+      player: m.player
+    }));
+
+    let winnerText = 'draw';
+    if (window.GAME.winner === 1) winnerText = 'black';
+    else if (window.GAME.winner === 2) winnerText = 'white';
+    else if (window.GAME.winner === 'forbidden') winnerText = 'forbidden';
+    if (window.GAME.forbiddenLines && window.GAME.forbiddenLines.length > 0 && window.GAME.winner === 2) {
+      winnerText = 'forbidden';
+    }
+
+    const blackName = window.GAME.allMembers.get(window.GAME.lobbySeats.black)?.name || '黑方';
+    const whiteName = window.GAME.allMembers.get(window.GAME.lobbySeats.white)?.name || '白方';
+
+    const uid = currentUser ? currentUser.id : null;
+    const gid = currentUser ? null : myGuestId;
+    const roomId = window.GAME.roomId || 'p2p_' + Date.now();
+    const mode = window.GAME.roomGameMode || 'casual';
+
+    console.log('📤 [P2P] 准备插入数据:', {
+      user_id: uid,
+      guest_id: gid,
+      room_id: roomId,
+      black_player: blackName,
+      white_player: whiteName,
+      winner: winnerText,
+      game_mode: mode,
+      moves: moves
+    });
+
+    try {
+      const { data, error } = await supabaseClient.from('games').insert({
+        user_id: uid,
+        guest_id: gid,
+        room_id: roomId,
+        black_player: blackName,
+        white_player: whiteName,
+        winner: winnerText,
+        game_mode: mode,
+        moves: moves
+      });
+      if (error) {
+        console.error('❌ [P2P] 插入失败:', error);
+      } else {
+        gameSaved = true;
+        console.log('✅ [P2P] 战绩已保存成功！', data);
+        // 清理旧记录
+        const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString();
+        let delQuery = supabaseClient.from('games').delete().lt('created_at', threeDaysAgo);
+        if (currentUser) delQuery = delQuery.eq('user_id', currentUser.id);
+        else if (myGuestId) delQuery = delQuery.eq('guest_id', myGuestId);
+        else return;
+        await delQuery;
+        console.log('🧹 [P2P] 清理旧记录完成');
+      }
+    } catch (e) {
+      console.error('❌ [P2P] 保存战绩异常:', e);
+    }
+  }
+
+  // ==================== 配置与用户信息 ====================
   const urlParams = new URLSearchParams(window.location.search);
   let gameMode = urlParams.get('mode') || 'casual';
   let isProMode = gameMode === 'pro';
   let roomGameMode = gameMode;
 
-  // 从 URL 参数或 localStorage 获取用户信息
   let urlNick = urlParams.get('nickname');
   let urlEmail = urlParams.get('email');
   let myNick = localStorage.getItem('gonick');
-  
-  if (urlNick) {
-    myNick = urlNick;
-    localStorage.setItem('gonick', myNick);
-  }
-  if (!myNick) {
-    myNick = '游客' + Math.floor(Math.random() * 900 + 100);
-    localStorage.setItem('gonick', myNick);
-  }
+  if (urlNick) { myNick = urlNick; localStorage.setItem('gonick', myNick); }
+  if (!myNick) { myNick = '游客' + Math.floor(Math.random() * 900 + 100); localStorage.setItem('gonick', myNick); }
 
-  let peer = null;
-  let myPeerId = null;
-  let isHost = false;
-  let roomId = null;
-  let allMembers = new Map();
-  let lobbySeats = { black: null, white: null, spectators: Array(6).fill(null) };
-  let mySeat = null;
-  let gameStarted = false;
-  let board = [], currentPlayer = 1, gameOver = false, winner = null, moveHistory = [];
-  let connections = new Map();
-  let heartbeatTimer = null;
-  let assignedPeers = new Set();
+  // ==================== 全局状态对象 ====================
+  window.GAME = {
+    isHost: false,
+    myPeerId: null,
+    roomId: null,
+    allMembers: new Map(),
+    lobbySeats: { black: null, white: null, spectators: Array(6).fill(null) },
+    mySeat: null,
+    gameStarted: false,
+    board: [],
+    currentPlayer: 1,
+    gameOver: false,
+    winner: null,
+    moveHistory: [],
+    connections: new Map(),
+    winLines: [],
+    forbiddenLines: [],
+    isProMode: isProMode,
+    roomGameMode: roomGameMode
+  };
 
-  const HEARTBEAT_INTERVAL = 10000;   // 心跳间隔：10秒
-  const CONNECTION_TIMEOUT = 35000; // 超时：35秒没收到回应就重连
-  let healthCheckTimer = null;        // 健康检查定时器
-
-  let winLines = [];
-  let forbiddenLines = [];
+  window._allMembers = window.GAME.allMembers;
+  window._myId = null;
 
   const BOARD_SIZE = 15;
-  const CANVAS_SIZE = 700;
-  const MARGIN = 40;
+  const CANVAS_SIZE = 800;
+  const MARGIN = 50;
   const GRID_SIZE = CANVAS_SIZE - MARGIN * 2;
   const CELL_SIZE = GRID_SIZE / (BOARD_SIZE - 1);
+  const stoneRadius = CELL_SIZE * 0.46;
 
   let canvas = document.getElementById('gobanCanvas');
   let ctx = canvas.getContext('2d');
-  let stoneRadius = CELL_SIZE * 0.42;
 
-  function updateEntryDisplay() {
-    document.getElementById('displayNickname').innerText = myNick;
-    let emailArea = document.getElementById('displayEmailArea');
-    if (urlEmail) {
-      emailArea.innerText = urlEmail;
-    } else {
-      emailArea.innerText = '';
-    }
-  }
-
+  // ========== 工具函数 ==========
   function showToast(msg) {
     let t = document.getElementById('toast');
     t.innerText = msg; t.classList.add('show');
     setTimeout(() => t.classList.remove('show'), 2500);
   }
-  function genRoomCode() { return Math.random().toString(36).substring(2, 8).toUpperCase(); }
-  function copyRoomCode() { 
-    if(roomId) { 
-      navigator.clipboard.writeText(roomId); 
-      showToast('房间码已复制: ' + roomId); 
+
+  function copyRoomCode() {
+    let rid = document.getElementById('roomCodeDisplay').innerText;
+    if (rid && rid !== '----') {
+      navigator.clipboard.writeText(rid);
+      showToast('房间码已复制: ' + rid);
     } else {
       showToast('暂无房间码');
     }
   }
 
-  function updateConnUI(online) {
-    let dot = document.getElementById('statusDot');
-    let txt = document.getElementById('statusText');
-    if(online) { dot.className = 'conn-dot conn-online'; txt.innerText = '在线'; }
-    else { dot.className = 'conn-dot conn-offline'; txt.innerText = '离线'; }
+  function updateEntryDisplay() {
+    document.getElementById('displayNickname').innerText = myNick;
+    let emailArea = document.getElementById('displayEmailArea');
+    if (urlEmail) emailArea.innerText = urlEmail;
+    else emailArea.innerText = '';
   }
 
-  // === 禁手检测函数 ===
-  function checkForbidden(row, col, boardState) {
-    const directions = [[1,0],[0,1],[1,1],[1,-1]];
-    let liveThreeCount = 0;
-    let fourCount = 0;
-    let overline = false;
-    let forbiddenLinesResult = [];
-
-    for (let [dx, dy] of directions) {
-      let cells = [];
-      for (let i = -4; i <= 4; i++) {
-        let r = row + dx * i, c = col + dy * i;
-        if (r < 0 || r >= BOARD_SIZE || c < 0 || c >= BOARD_SIZE) cells.push(2);
-        else cells.push(boardState[r][c]);
-      }
-
-      let count = 1;
-      for (let i = 1; i <= 4; i++) {
-        if (cells[4+i] === 1) count++; else break;
-      }
-      for (let i = 1; i <= 4; i++) {
-        if (cells[4-i] === 1) count++; else break;
-      }
-      if (count > 5) overline = true;
-
-      if (hasLiveThree(cells)) liveThreeCount++;
-      if (hasFour(cells)) fourCount++;
-    }
-
-    if (liveThreeCount >= 2 || fourCount >= 2 || overline) {
-      forbiddenLinesResult = collectForbiddenLines(row, col, boardState);
-    }
-
-    return {
-      sanSan: liveThreeCount >= 2,
-      siSi: fourCount >= 2,
-      overline: overline,
-      lines: forbiddenLinesResult
-    };
-  }
-
-  function collectForbiddenLines(row, col, boardState) {
-    const directions = [[1,0],[0,1],[1,1],[1,-1]];
-    let lines = [];
-
-    for (let [dx, dy] of directions) {
-      let cells = [];
-      let positions = [];
-      for (let i = -4; i <= 4; i++) {
-        let r = row + dx * i, c = col + dy * i;
-        if (r < 0 || r >= BOARD_SIZE || c < 0 || c >= BOARD_SIZE) {
-          cells.push(2);
-          positions.push(null);
-        } else {
-          cells.push(boardState[r][c]);
-          positions.push({r, c});
-        }
-      }
-
-      if (hasLiveThree(cells)) {
-        let line = extractLine(cells, positions, 1, 3);
-        if (line.length >= 3) lines.push(line);
-      }
-      if (hasFour(cells)) {
-        let line = extractLine(cells, positions, 1, 4);
-        if (line.length >= 4) lines.push(line);
-      }
-      let count = 1;
-      for (let i = 1; i <= 4; i++) {
-        if (cells[4+i] === 1) count++; else break;
-      }
-      for (let i = 1; i <= 4; i++) {
-        if (cells[4-i] === 1) count++; else break;
-      }
-      if (count > 5) {
-        let line = [];
-        for (let i = -4; i <= 4; i++) {
-          if (cells[4+i] === 1 && positions[4+i]) line.push(positions[4+i]);
-        }
-        if (line.length > 5) lines.push(line);
-      }
-    }
-    return lines;
-  }
-
-  function extractLine(cells, positions, targetVal, targetCount) {
-    for (let start = 0; start <= 4; start++) {
-      let win = cells.slice(start, start + 5);
-      let pos = positions.slice(start, start + 5);
-      let count = 0, line = [];
-      for (let i = 0; i < 5; i++) {
-        if (win[i] === targetVal) {
-          count++;
-          if (pos[i]) line.push(pos[i]);
-        }
-      }
-      if (count === targetCount && line.length === targetCount) {
-        return line;
-      }
-    }
-    return [];
-  }
-
-  function hasLiveThree(cells) {
-    for (let start = 0; start <= 4; start++) {
-      let win = cells.slice(start, start + 5);
-      let idx = 4 - start;
-      if (idx < 0 || idx >= 5 || win[idx] !== 1) continue;
-      let blackPos = [], emptyPos = [];
-      for (let i = 0; i < 5; i++) {
-        if (win[i] === 1) blackPos.push(i);
-        else if (win[i] === 0) emptyPos.push(i);
-      }
-      if (blackPos.length !== 3 || emptyPos.length !== 2) continue;
-      if (blackPos[1] - blackPos[0] > 2 || blackPos[2] - blackPos[1] > 2) continue;
-      if (emptyPos.includes(0) && emptyPos.includes(4)) return true;
-    }
-    return false;
-  }
-
-  function hasFour(cells) {
-    for (let start = 0; start <= 4; start++) {
-      let win = cells.slice(start, start + 5);
-      let idx = 4 - start;
-      if (idx < 0 || idx >= 5 || win[idx] !== 1) continue;
-      let blackCount = 0, emptyCount = 0;
-      for (let i = 0; i < 5; i++) {
-        if (win[i] === 1) blackCount++;
-        else if (win[i] === 0) emptyCount++;
-      }
-      if (blackCount === 4 && emptyCount === 1) return true;
-    }
-    return false;
-  }
-
-  // === 胜负检测 + 收集五连位置 ===
+  // ========== 游戏核心 ==========
   function checkWinWithLine(row, col, player) {
-    if (board[row][col] !== player) return null;
-    const directions = [[1,0],[0,1],[1,1],[1,-1]];
-    for (let d of directions) {
-      let count = 1;
-      const [dx, dy] = d;
-      let line = [{r: row, c: col}];
-      for (let step = 1; step < 5; step++) {
-        const nr = row + dx * step, nc = col + dy * step;
-        if (nr < 0 || nr >= BOARD_SIZE || nc < 0 || nc >= BOARD_SIZE || board[nr][nc] !== player) break;
-        count++; line.push({r: nr, c: nc});
-      }
-      for (let step = 1; step < 5; step++) {
-        const nr = row - dx * step, nc = col - dy * step;
-        if (nr < 0 || nr >= BOARD_SIZE || nc < 0 || nc >= BOARD_SIZE || board[nr][nc] !== player) break;
-        count++; line.unshift({r: nr, c: nc});
-      }
-      if (count >= 5) return line;
-    }
-    return null;
+    return Rules.checkWinWithLine(row, col, player, window.GAME.board, BOARD_SIZE);
   }
 
-  function checkWin(r, c, p) {
-    return checkWinWithLine(r, c, p) !== null;
+  function initBoardData() {
+    window.GAME.board = Rules.initBoard(BOARD_SIZE);
+    window.GAME.currentPlayer = 1;
+    window.GAME.gameOver = false;
+    window.GAME.winner = null;
+    window.GAME.moveHistory = [];
+    window.GAME.winLines = [];
+    window.GAME.forbiddenLines = [];
+    gameSaved = false;
   }
 
-  // === 绘制棋盘（专业模式取消红框） ===
+  // ========== 绘制 ==========
   function drawBoard(drawLastMark) {
     if (drawLastMark === undefined) drawLastMark = !isProMode;
-    if(!ctx) return;
-    ctx.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
-    ctx.fillStyle = '#eedbbc';
-    ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
-
-    ctx.strokeStyle = '#5c3a1e';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(MARGIN - 2, MARGIN - 2, GRID_SIZE + 4, GRID_SIZE + 4);
-
-    ctx.strokeStyle = '#6b4c2c';
-    ctx.lineWidth = 1.5;
-    for(let i = 0; i < BOARD_SIZE; i++) {
-      let pos = MARGIN + i * CELL_SIZE;
-      ctx.beginPath(); ctx.moveTo(MARGIN, pos); ctx.lineTo(MARGIN + GRID_SIZE, pos); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(pos, MARGIN); ctx.lineTo(pos, MARGIN + GRID_SIZE); ctx.stroke();
-    }
-
-    let stars = [[3,3],[3,7],[3,11],[7,3],[7,7],[7,11],[11,3],[11,7],[11,11]];
-    ctx.fillStyle = '#4a3a28';
-    for(let [r, c] of stars) {
-      let x = MARGIN + c * CELL_SIZE;
-      let y = MARGIN + r * CELL_SIZE;
-      ctx.beginPath(); ctx.arc(x, y, 4, 0, Math.PI * 2); ctx.fill();
-    }
-
-    for(let r = 0; r < BOARD_SIZE; r++) {
-      for(let c = 0; c < BOARD_SIZE; c++) {
-        if(board[r][c] === 0) continue;
-        let x = MARGIN + c * CELL_SIZE;
-        let y = MARGIN + r * CELL_SIZE;
-        drawStone(x, y, board[r][c]);
-      }
-    }
-
-    if(drawLastMark && moveHistory.length > 0 && !gameOver) {
-      let last = moveHistory[moveHistory.length - 1];
-      let x = MARGIN + last.col * CELL_SIZE;
-      let y = MARGIN + last.row * CELL_SIZE;
-      ctx.strokeStyle = '#d64531';
-      ctx.lineWidth = 2.5;
-      ctx.beginPath();
-      ctx.rect(x - stoneRadius - 3, y - stoneRadius - 3, (stoneRadius + 3) * 2, (stoneRadius + 3) * 2);
-      ctx.stroke();
-    }
-  }
-
-  function drawStone(x, y, player) {
-    ctx.beginPath();
-    ctx.arc(x + 2, y + 2, stoneRadius, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(0,0,0,0.25)';
-    ctx.fill();
-
-    let grad = ctx.createRadialGradient(x - stoneRadius * 0.3, y - stoneRadius * 0.3, stoneRadius * 0.1, x, y, stoneRadius);
-    if(player === 1) {
-      grad.addColorStop(0, '#6d5a4a');
-      grad.addColorStop(0.3, '#3d2e1f');
-      grad.addColorStop(1, '#1a120a');
-    } else {
-      grad.addColorStop(0, '#ffffff');
-      grad.addColorStop(0.3, '#f0e6d3');
-      grad.addColorStop(1, '#c8bca6');
-    }
-    ctx.beginPath(); ctx.arc(x, y, stoneRadius, 0, Math.PI * 2);
-    ctx.fillStyle = grad; ctx.fill();
-
-    ctx.beginPath();
-    ctx.arc(x - stoneRadius * 0.25, y - stoneRadius * 0.25, stoneRadius * 0.35, 0, Math.PI * 2);
-    ctx.fillStyle = player === 1 ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.6)';
-    ctx.fill();
-  }
-
-  // === 连线动画绘制 ===
-  function drawWinLines(progress) {
-    ctx.save();
-    ctx.strokeStyle = '#d64531';
-    ctx.lineWidth = 3;
-    ctx.lineCap = 'round';
-    ctx.shadowColor = '#d64531';
-    ctx.shadowBlur = 8;
-
-    for (let line of winLines) {
-      if (line.length < 2) continue;
-      let startX = MARGIN + line[0].c * CELL_SIZE;
-      let startY = MARGIN + line[0].r * CELL_SIZE;
-      let endX = MARGIN + line[line.length - 1].c * CELL_SIZE;
-      let endY = MARGIN + line[line.length - 1].r * CELL_SIZE;
-
-      let curX = startX + (endX - startX) * progress;
-      let curY = startY + (endY - startY) * progress;
-
-      ctx.beginPath();
-      ctx.moveTo(startX, startY);
-      ctx.lineTo(curX, curY);
-      ctx.stroke();
-    }
-    ctx.restore();
-  }
-
-  function drawForbiddenLines(progress) {
-    ctx.save();
-    ctx.strokeStyle = '#d64531';
-    ctx.lineWidth = 3;
-    ctx.lineCap = 'round';
-    ctx.shadowColor = '#d64531';
-    ctx.shadowBlur = 8;
-
-    for (let line of forbiddenLines) {
-      if (line.length < 2) continue;
-      let startX = MARGIN + line[0].c * CELL_SIZE;
-      let startY = MARGIN + line[0].r * CELL_SIZE;
-      let endX = MARGIN + line[line.length - 1].c * CELL_SIZE;
-      let endY = MARGIN + line[line.length - 1].r * CELL_SIZE;
-
-      let curX = startX + (endX - startX) * progress;
-      let curY = startY + (endY - startY) * progress;
-
-      ctx.beginPath();
-      ctx.moveTo(startX, startY);
-      ctx.lineTo(curX, curY);
-      ctx.stroke();
-    }
-    ctx.restore();
+    const lastMove = window.GAME.moveHistory.length > 0 ? window.GAME.moveHistory[window.GAME.moveHistory.length - 1] : null;
+    Goban.drawBoard(ctx, window.GAME.board, {
+      lastMove: lastMove,
+      winLines: window.GAME.winLines,
+      forbiddenLines: window.GAME.forbiddenLines,
+      drawLastMark: drawLastMark,
+      boardSize: BOARD_SIZE,
+      margin: MARGIN,
+      stoneRadius: stoneRadius
+    });
   }
 
   function animateLines(lines, isForbidden, onComplete) {
-    let startTime = null;
-    let duration = 800;
-
+    let startTime = null, duration = 800;
     function frame(timestamp) {
       if (!startTime) startTime = timestamp;
       let elapsed = timestamp - startTime;
       let progress = Math.min(elapsed / duration, 1);
       let ease = 1 - Math.pow(1 - progress, 3);
-
-      drawBoard(false);
-      if (isForbidden) drawForbiddenLines(ease);
-      else drawWinLines(ease);
-
-      if (progress < 1) {
-        requestAnimationFrame(frame);
-      } else {
-        setTimeout(onComplete, 300);
+      Goban.drawBoard(ctx, window.GAME.board, {
+        lastMove: window.GAME.moveHistory.length > 0 ? window.GAME.moveHistory[window.GAME.moveHistory.length - 1] : null,
+        winLines: [],
+        forbiddenLines: [],
+        drawLastMark: false,
+        boardSize: BOARD_SIZE,
+        margin: MARGIN,
+        stoneRadius: stoneRadius
+      });
+      if (lines.length > 0) {
+        Goban.drawLinesProgress(ctx, lines, ease, MARGIN, CELL_SIZE, '#d64531');
       }
+      if (progress < 1) requestAnimationFrame(frame);
+      else setTimeout(onComplete, 300);
     }
     requestAnimationFrame(frame);
   }
 
-  // === 初始化重置连线数据 ===
-  function initBoardData() {
-    board = Array(BOARD_SIZE).fill().map(() => Array(BOARD_SIZE).fill(0));
-    currentPlayer = 1; gameOver = false; winner = null; moveHistory = [];
-    winLines = [];
-    forbiddenLines = [];
-  }
-
-  function updateLobbyUI() {
-    updateSeatUI('black', lobbySeats.black);
-    updateSeatUI('white', lobbySeats.white);
-    for(let i = 0; i < 6; i++) updateSeatUI('spec-' + i, lobbySeats.spectators[i]);
-    let startBtn = document.getElementById('startGameButton');
-    if(isHost && lobbySeats.black && lobbySeats.white) startBtn.classList.add('show');
-    else startBtn.classList.remove('show');
-    
-    // 更新房间模式显示
-    let modeText = roomGameMode === 'pro' ? '专业模式（禁手规则）' : '业余模式（自由对弈）';
-    let modeEl = document.getElementById('lobbyModeBar');
-    if (modeEl) modeEl.innerText = '🎮 当前模式：' + modeText;
-  }
-
-  function updateSeatUI(seatId, occupantId) {
-    let isBlack = seatId === 'black';
-    let isWhite = seatId === 'white';
-    let isSpec = seatId.startsWith('spec-');
-    let idx = isSpec ? parseInt(seatId.split('-')[1]) : -1;
-
-    let avatarDiv, nameSpan, statusSpan, cardDiv;
-    if(isBlack) {
-      avatarDiv = document.getElementById('blackAvatar');
-      nameSpan = document.getElementById('blackName');
-      statusSpan = document.getElementById('blackStatus');
-      cardDiv = document.getElementById('seatBlackCard');
-    } else if(isWhite) {
-      avatarDiv = document.getElementById('whiteAvatar');
-      nameSpan = document.getElementById('whiteName');
-      statusSpan = document.getElementById('whiteStatus');
-      cardDiv = document.getElementById('seatWhiteCard');
-    } else {
-      avatarDiv = document.getElementById('specAvatar' + idx);
-      nameSpan = document.getElementById('specName' + idx);
-      statusSpan = document.getElementById('specStatus' + idx);
-      cardDiv = document.getElementById('specCard' + idx);
-    }
-    if(!avatarDiv) return;
-
-    if(occupantId) {
-      let member = allMembers.get(occupantId);
-      let displayName = member ? member.name : '棋客';
-      avatarDiv.innerText = displayName.charAt(0);
-      avatarDiv.className = 'seat-avatar ' + (isBlack ? 'black-avatar' : (isWhite ? 'white-avatar' : 'spec-avatar'));
-      nameSpan.innerText = displayName + (occupantId === myPeerId ? ' (我)' : '');
-      statusSpan.innerText = '已入座';
-      cardDiv.classList.add('occupied-seat');
-      if(occupantId === myPeerId) cardDiv.classList.add('is-me-seat');
-      else cardDiv.classList.remove('is-me-seat');
-    } else {
-      avatarDiv.innerText = '+';
-      avatarDiv.className = 'seat-avatar empty-avatar';
-      nameSpan.innerText = '空位';
-      statusSpan.innerText = '点击入座';
-      cardDiv.classList.remove('occupied-seat', 'is-me-seat');
-    }
-  }
-
-  function renderSpectators() {
-    let container = document.getElementById('specSeatsContainer');
-    if(!container) return;
-    container.innerHTML = '';
-    for(let i = 0; i < 6; i++) {
-      let div = document.createElement('div');
-      div.className = 'seat-card';
-      div.onclick = function() { requestSeat('spec-' + i); };
-      div.id = 'specCard' + i;
-      div.innerHTML = `
-        <div class="seat-avatar empty-avatar" id="specAvatar${i}">+</div>
-        <div class="seat-name" id="specName${i}">空位</div>
-        <div class="seat-status" id="specStatus${i}">点击入座</div>
-      `;
-      container.appendChild(div);
-    }
-  }
-
-  function getSeatOccupant(seatId) {
-    if(seatId === 'black') return lobbySeats.black;
-    if(seatId === 'white') return lobbySeats.white;
-    if(seatId.startsWith('spec-')) {
-      let idx = parseInt(seatId.split('-')[1]);
-      return lobbySeats.spectators[idx];
-    }
-    return null;
-  }
-
-  function setSeat(seatId, pid) {
-    if(seatId === 'black') lobbySeats.black = pid;
-    else if(seatId === 'white') lobbySeats.white = pid;
-    else if(seatId.startsWith('spec-')) {
-      let idx = parseInt(seatId.split('-')[1]);
-      if(idx >= 0 && idx < 6) lobbySeats.spectators[idx] = pid;
-    }
-  }
-
-  function clearAllSeatsOf(pid) {
-    if(lobbySeats.black === pid) lobbySeats.black = null;
-    if(lobbySeats.white === pid) lobbySeats.white = null;
-    for(let i = 0; i < 6; i++) {
-      if(lobbySeats.spectators[i] === pid) lobbySeats.spectators[i] = null;
-    }
-  }
-
-  function findSeatOf(pid) {
-    if(lobbySeats.black === pid) return 'black';
-    if(lobbySeats.white === pid) return 'white';
-    for(let i = 0; i < 6; i++) {
-      if(lobbySeats.spectators[i] === pid) return 'spec-' + i;
-    }
-    return null;
-  }
-
-  function requestSeat(targetSeat) {
-    if(!roomId) return;
-    if(mySeat === targetSeat) return;
-    
-    let occupant = getSeatOccupant(targetSeat);
-    if(occupant && occupant !== myPeerId) {
-      showToast('该位置已有人');
-      return;
-    }
-
-    if(!isHost) {
-      let connToHost = connections.get(roomId);
-      if(connToHost && connToHost.conn.open) {
-        connToHost.conn.send({ type: 'seatRequest', targetSeat: targetSeat });
-      }
-    } else {
-      handleSeatChange(myPeerId, targetSeat);
-    }
-  }
-
-  function handleSeatChange(pid, newSeat) {
-    let occupant = getSeatOccupant(newSeat);
-    if(occupant && occupant !== pid) return;
-
-    clearAllSeatsOf(pid);
-    setSeat(newSeat, pid);
-
-    let mem = allMembers.get(pid);
-    if(mem) mem.seat = newSeat;
-    if(pid === myPeerId) mySeat = newSeat;
-
-    broadcastToAll({ type: 'seatsUpdate', seats: lobbySeats, changedPeer: pid, changedSeat: newSeat });
-    updateLobbyUI();
-  }
-
-  function autoAssignSeat(peerId) {
-    let existing = findSeatOf(peerId);
-    if(existing) return existing;
-    
-    if(!lobbySeats.black) return 'black';
-    if(!lobbySeats.white) return 'white';
-    for(let i = 0; i < 6; i++) {
-      if(!lobbySeats.spectators[i]) return 'spec-' + i;
-    }
-    return null;
-  }
-
-  function broadcastToAll(msg, exceptId) {
-    connections.forEach((val, id) => {
-      if(id !== exceptId && val.conn.open) {
-        try { val.conn.send(msg); } catch(e) {}
-      }
-    });
-  }
-
-  function onReceiveMessage(fromId, data) {
-    // === 心跳处理 ===
-    if (data.type === 'ping') {
-      let c = connections.get(fromId);
-      if (c && c.conn && c.conn.open) {
-        c.conn.send({ type: 'pong', from: myPeerId, time: data.time });
-      }
-      if (c) c.lastSeen = Date.now();
-      return;
-    }
-    if (data.type === 'pong') {
-      let c = connections.get(fromId);
-      if (c) c.lastSeen = Date.now();
-      return;
-    }
-    if(isHost && fromId !== myPeerId) {
-      let forwardTypes = ['move','chatMsg','surrender','drawRequest','drawAccept'];
-      if(forwardTypes.includes(data.type)) broadcastToAll(data, fromId);
-
-    }
-
-
-
-    if(data.type === 'joinRequest' && isHost) {
-      let mem = allMembers.get(data.myId);
-      if(!mem) allMembers.set(data.myId, { name: data.name, seat: null, online: true });
-      else mem.name = data.name;
-      
-      let existingSeat = allMembers.get(data.myId)?.seat;
-      if(!existingSeat) {
-        let seat = autoAssignSeat(data.myId);
-        if(seat) handleSeatChange(data.myId, seat);
-      }
-      
-      let targetConn = connections.get(data.myId);
-      if(targetConn && targetConn.conn.open) {
-        let memberList = Array.from(allMembers.entries()).map(([id, val]) => ({ id: id, name: val.name, seat: val.seat }));
-        targetConn.conn.send({
-          type: 'fullSync',
-          seats: lobbySeats,
-          gameStarted: gameStarted,
-          board: board,
-          currentPlayer: currentPlayer,
-          gameOver: gameOver,
-          winner: winner,
-          moveHistory: moveHistory,
-          members: memberList,
-          mySeat: allMembers.get(data.myId)?.seat,
-          gameMode: roomGameMode
-        });
-      }
-      broadcastToAll({ type: 'memberUpdate', peerId: data.myId, name: data.name, seat: allMembers.get(data.myId)?.seat });
-      return;
-    }
-
-    if(data.type === 'seatRequest' && isHost) {
-      handleSeatChange(fromId, data.targetSeat);
-      return;
-    }
-    if(data.type === 'seatsUpdate' && !isHost) {
-      let oldMySeat = mySeat;
-      lobbySeats = data.seats;
-      if(data.changedPeer === myPeerId) {
-        mySeat = data.changedSeat;
-      } else if(oldMySeat) {
-        let stillThere = false;
-        if(oldMySeat === 'black' && lobbySeats.black === myPeerId) stillThere = true;
-        if(oldMySeat === 'white' && lobbySeats.white === myPeerId) stillThere = true;
-        if(oldMySeat.startsWith('spec-')) {
-          let idx = parseInt(oldMySeat.split('-')[1]);
-          if(lobbySeats.spectators[idx] === myPeerId) stillThere = true;
-        }
-        if(!stillThere) {
-          let newSeat = findSeatOf(myPeerId);
-          if(newSeat) mySeat = newSeat;
-        }
-      }
-      updateLobbyUI();
-      if(gameStarted) updateGameInfoPanel();
-      return;
-    }
-    if(data.type === 'fullSync' && !isHost) {
-      lobbySeats = data.seats;
-      gameStarted = data.gameStarted;
-      board = data.board;
-      currentPlayer = data.currentPlayer;
-      gameOver = data.gameOver;
-      winner = data.winner;
-      moveHistory = data.moveHistory || [];
-      allMembers.clear();
-      data.members.forEach(m => allMembers.set(m.id, { name: m.name, seat: m.seat, online: true }));
-      if(data.mySeat) {
-        mySeat = data.mySeat;
-      }
-      if (data.gameMode) {
-        roomGameMode = data.gameMode;
-        isProMode = roomGameMode === 'pro';
-      }
-      updateLobbyUI();
-      if(gameStarted) updateGameInfoPanel();
-      if(gameStarted) {
-        document.getElementById('lobbyScreen').classList.add('hidden');
-        document.getElementById('gameScreen').classList.remove('hidden');
-        drawBoard(); updateGameInfoPanel(); updateTurnDisplay();
-        updateGameButtons();
-      } else {
-        document.getElementById('lobbyScreen').classList.remove('hidden');
-        document.getElementById('gameScreen').classList.add('hidden');
-      }
-      return;
-    }
-    if(data.type === 'gameStart' && !isHost) {
-      if (data.gameMode) {
-        roomGameMode = data.gameMode;
-        isProMode = roomGameMode === 'pro';
-      }
-      gameStarted = true; initBoardData();
-      document.getElementById('lobbyScreen').classList.add('hidden');
-      document.getElementById('gameScreen').classList.remove('hidden');
-      drawBoard(); updateGameInfoPanel(); updateTurnDisplay();
-      updateGameButtons();
-      showToast('对局开始！');
-      return;
-    }
-    if(data.type === 'move') {
-      applyMove(data.row, data.col, data.player, data.gameOver, data.winner, data);
-      return;
-    }
-    if(data.type === 'boardSync') {
-      board = data.board;
-      currentPlayer = data.currentPlayer;
-      gameOver = data.gameOver;
-      winner = data.winner;
-      moveHistory = data.moveHistory;
-      drawBoard(); updateGameInfoPanel(); updateTurnDisplay();
-      if(gameOver) showWinnerMsg();
-      return;
-    }
-    if(data.type === 'chatMsg') {
-      addChatMessage(data.sender, data.text, 'other');
-      return;
-    }
-    if(data.type === 'returnToLobby' && !isHost) {
-      gameStarted = false;
-      gameOver = false;
-      winner = null;
-      initBoardData();
-      lobbySeats = data.seats;
-      allMembers.clear();
-      data.members.forEach(m => allMembers.set(m.id, { name: m.name, seat: m.seat, online: true }));
-      let myMem = allMembers.get(myPeerId);
-      if(myMem && myMem.seat) mySeat = myMem.seat;
-
-      document.getElementById('gameScreen').classList.add('hidden');
-      document.getElementById('lobbyScreen').classList.remove('hidden');
-      updateLobbyUI();
-      updateTurnDisplay();
-      showToast('已返回房间，准备下一局');
-      return;
-    }
-    if(data.type === 'surrender') {
-      if(data.from === myPeerId) return;
-      gameOver = true;
-      winner = (data.player === 1 ? 2 : 1);
-      updateTurnDisplay();
-      updateGameInfoPanel();
-      showWinnerMsg();
-      showToast((data.player === 1 ? '黑方' : '白方') + '投降，' + (winner === 1 ? '黑方' : '白方') + '获胜');
-      return;
-    }
-    if(data.type === 'drawRequest') {
-      if(data.from === myPeerId) return;
-      if(mySeat === 'black' || mySeat === 'white') {
-        if(confirm(data.senderName + ' 提出平局，是否同意？')) {
-          broadcastToAll({ type: 'drawAccept', from: myPeerId });
-          gameOver = true;
-          winner = 0;
-          updateTurnDisplay();
-          updateGameInfoPanel();
-          showWinnerMsg();
-          showToast('双方平局');
-        }
-      }
-      return;
-    }
-    if(data.type === 'drawAccept') {
-      if(data.from === myPeerId) return;
-      gameOver = true;
-      winner = 0;
-      updateTurnDisplay();
-      updateGameInfoPanel();
-      showWinnerMsg();
-      showToast('双方平局');
-      return;
-    }
-    if(data.type === 'memberUpdate') {
-      allMembers.set(data.peerId, { name: data.name, seat: data.seat });
-      updateLobbyUI();
-      updateGameInfoPanel();
-    }
-  }
-
-  function applyMove(row, col, player, isGameOver, win, data) {
-    board[row][col] = player;
-    moveHistory.push({ row: row, col: col, player: player });
-    
-    if (data && data.reason === 'forbidden') {
-      gameOver = true;
-      winner = 2;
-      forbiddenLines = data.forbiddenLines || [];
-      drawBoard(false);
-      endGame(2, 'forbidden');
-      return;
-    }
-    
-    if(isGameOver) {
-      gameOver = true;
-      winner = win;
-      if (win === 1 || win === 2) {
-        if (data && data.winLines) {
-          winLines = data.winLines;
-        } else {
-          let line = checkWinWithLine(row, col, player);
-          if (line) winLines = [line];
-        }
-      }
-    } else {
-      currentPlayer = (currentPlayer === 1 ? 2 : 1);
-    }
-    drawBoard();
-    updateTurnDisplay();
-    updateGameInfoPanel();
-    if(gameOver) endGame(winner);
-  }
-
-  function tryPlace(row, col) {
-    if(gameOver || !gameStarted) return false;
-    let myColor = mySeat === 'black' ? 1 : (mySeat === 'white' ? 2 : null);
-    if(myColor !== currentPlayer) {
-      showToast('请等待对方落子');
-      return false;
-    }
-    if(board[row][col] !== 0) return false;
-
-    if (isProMode && currentPlayer === 1) {
-      board[row][col] = 1;
-      let forbidden = checkForbidden(row, col, board);
-      board[row][col] = 0;
-      if (forbidden.sanSan || forbidden.siSi || forbidden.overline) {
-        board[row][col] = 1;
-        moveHistory.push({ row: row, col: col, player: 1 });
-        forbiddenLines = forbidden.lines;
-        drawBoard(false);
-        broadcastToAll({ type: 'move', row: row, col: col, player: 1, gameOver: true, winner: 2, reason: 'forbidden', forbiddenLines: forbiddenLines });
-        endGame(2, 'forbidden');
-        return true;
-      }
-    }
-
-    board[row][col] = currentPlayer;
-    moveHistory.push({ row: row, col: col, player: currentPlayer });
-
-    let winLine = checkWinWithLine(row, col, currentPlayer);
-    let full = isFull();
-
-    if(winLine) {
-      winLines = [winLine];
-      gameOver = true;
-      winner = currentPlayer;
-      broadcastToAll({ type: 'move', row: row, col: col, player: currentPlayer, gameOver: true, winner: currentPlayer, winLines: winLines });
-      endGame(currentPlayer);
-    } else if(full) {
-      gameOver = true;
-      winner = 0;
-      broadcastToAll({ type: 'move', row: row, col: col, player: currentPlayer, gameOver: true, winner: 0 });
-      endGame(0);
-    } else {
-      let placedPlayer = currentPlayer;
-      currentPlayer = (currentPlayer === 1 ? 2 : 1);
-      broadcastToAll({ type: 'move', row: row, col: col, player: placedPlayer, gameOver: false });
-    }
-
-    drawBoard();
-    updateTurnDisplay();
-    updateGameInfoPanel();
-    return true;
-  }
-
-  function isFull() {
-    for(let i = 0; i < BOARD_SIZE; i++) {
-      for(let j = 0; j < BOARD_SIZE; j++) {
-        if(board[i][j] === 0) return false;
-      }
-    }
-    return true;
-  }
-
+  // ========== 游戏结束 ==========
   function endGame(winningPlayer, reason) {
-    gameOver = true;
-    winner = winningPlayer;
-    updateTurnDisplay();
-    updateGameInfoPanel();
-    
+    window.GAME.gameOver = true;
+    window.GAME.winner = winningPlayer;
+    window.UI.updateTurnDisplay(window.GAME.gameStarted, window.GAME.gameOver, window.GAME.winner, window.GAME.currentPlayer, window.GAME.mySeat);
+    window.UI.updateGameInfoPanel(window.GAME.lobbySeats, window.GAME.allMembers, window.GAME.mySeat, window.GAME.gameStarted, window.GAME.gameOver, window.GAME.isProMode);
+
+    // 保存战绩（无条件调用）
+    saveGameToSupabase();
+
     if (reason === 'forbidden') {
       document.getElementById('winnerMessage').innerText = '⛔ 黑棋禁手！白棋胜';
-      animateLines(forbiddenLines, true, () => {
-        showWinnerMsg('forbidden');
-      });
+      animateLines(window.GAME.forbiddenLines, true, () => { showWinnerMsg('forbidden'); });
       return;
     }
-    
-    if (winner === 1) {
-      document.getElementById('winnerMessage').innerText = '🏆 黑棋五连！胜局 🏆';
-    } else if (winner === 2) {
-      document.getElementById('winnerMessage').innerText = '🏆 白棋五连！胜局 🏆';
-    } else {
-      document.getElementById('winnerMessage').innerText = '🤝 棋盘已满 · 平局 🤝';
-    }
-    
-    if (winLines.length > 0) {
-      animateLines(winLines, false, () => {
-        showWinnerMsg();
-      });
-    } else {
-      showWinnerMsg();
-    }
+    if (window.GAME.winner === 1) document.getElementById('winnerMessage').innerText = '🏆 黑棋五连！胜局 🏆';
+    else if (window.GAME.winner === 2) document.getElementById('winnerMessage').innerText = '🏆 白棋五连！胜局 🏆';
+    else document.getElementById('winnerMessage').innerText = '🤝 棋盘已满 · 平局 🤝';
+
+    if (window.GAME.winLines.length > 0) animateLines(window.GAME.winLines, false, () => { showWinnerMsg(); });
+    else showWinnerMsg();
   }
 
   function showWinnerMsg(type) {
     let msg, subMsg, className;
     if (type === 'forbidden') {
-      msg = '⛔ 黑棋禁手！';
-      subMsg = '白棋不战而胜';
-      className = 'end-forbidden';
-    } else if (winner === 1) {
-      msg = '⚫ 黑方获胜！';
-      subMsg = '黑棋连珠，技高一筹';
-      className = 'end-black-win';
-    } else if (winner === 2) {
-      msg = '⚪ 白方获胜！';
-      subMsg = '白棋连珠，技高一筹';
-      className = 'end-white-win';
+      msg = '⛔ 黑棋禁手！'; subMsg = '白棋不战而胜'; className = 'end-forbidden';
+    } else if (window.GAME.winner === 1) {
+      msg = '⚫ 黑方获胜！'; subMsg = '黑棋连珠，技高一筹'; className = 'end-black-win';
+    } else if (window.GAME.winner === 2) {
+      msg = '⚪ 白方获胜！'; subMsg = '白棋连珠，技高一筹'; className = 'end-white-win';
     } else {
-      msg = '🤝 平局！';
-      subMsg = '旗鼓相当，不分胜负';
-      className = 'end-draw';
+      msg = '🤝 平局！'; subMsg = '旗鼓相当，不分胜负'; className = 'end-draw';
     }
-
     let overlay = document.getElementById('gameEndOverlay');
     let text = document.getElementById('gameEndText');
     let sub = document.getElementById('gameEndSub');
     let particles = document.getElementById('endParticles');
-
     text.innerText = msg;
     text.className = 'game-end-text ' + className;
     sub.innerText = subMsg;
-
     particles.innerHTML = '';
-    for(let i = 0; i < 20; i++) {
+    for (let i = 0; i < 20; i++) {
       let p = document.createElement('div');
       p.className = 'end-particle';
       p.style.left = Math.random() * 100 + '%';
@@ -1523,401 +451,244 @@
       p.style.background = colors[Math.floor(Math.random() * colors.length)];
       particles.appendChild(p);
     }
-
     overlay.classList.add('show');
-    // === MOD: 联机版动画结束后自动返回座位席大厅 ===
     setTimeout(() => { exitToLobby(); }, 3500);
   }
 
-  function closeGameEnd() {
-    document.getElementById('gameEndOverlay').classList.remove('show');
-  }
-
   function exitToLobby() {
-    document.getElementById('gameEndOverlay').classList.remove('show');
-    gameStarted = false;
-    gameOver = false;
-    winner = null;
-    initBoardData();
-
-    document.getElementById('gameScreen').classList.add('hidden');
-    document.getElementById('lobbyScreen').classList.remove('hidden');
-    updateLobbyUI();
-
-    let startBtn = document.getElementById('startGameButton');
-    if(isHost && lobbySeats.black && lobbySeats.white) {
-      startBtn.classList.add('show');
-    } else {
-      startBtn.classList.remove('show');
-    }
-
-    if(isHost) {
-      broadcastToAll({ 
-        type: 'returnToLobby', 
-        seats: lobbySeats,
-        members: Array.from(allMembers.entries()).map(([id, val]) => ({ id: id, name: val.name, seat: val.seat }))
-      });
-    }
-
-    updateTurnDisplay();
-    showToast('已返回房间，准备下一局');
-  }
-
-  function updateTurnDisplay() {
-    let turnText = !gameStarted ? '等待开始' : (gameOver ? (winner === 1 ? '黑方胜' : (winner === 2 ? '白方胜' : '和棋')) : (currentPlayer === 1 ? '⚫ 黑棋回合' : '⚪ 白棋回合'));
-    document.getElementById('turnIndicator').innerText = turnText;
-
-    let miniBlack = document.getElementById('miniBlack');
-    let miniWhite = document.getElementById('miniWhite');
-    miniBlack.classList.remove('active-black');
-    miniWhite.classList.remove('active-white');
-    if(gameStarted && !gameOver) {
-      if(currentPlayer === 1) miniBlack.classList.add('active-black');
-      else miniWhite.classList.add('active-white');
-    }
-
-    let reminder = document.getElementById('turnReminder');
-    if(!reminder) return;
-
-    if(!gameStarted) {
-      reminder.innerText = '⏳ 等待对局开始...';
-      reminder.className = 'turn-reminder waiting';
-    } else if(gameOver) {
-      reminder.innerText = winner === 0 ? '🤝 平局结束' : (winner === 1 ? '⚫ 黑方获胜' : '⚪ 白方获胜');
-      reminder.className = 'turn-reminder waiting';
-    } else {
-      let myColor = mySeat === 'black' ? 1 : (mySeat === 'white' ? 2 : null);
-      if(myColor === null) {
-        reminder.innerText = currentPlayer === 1 ? '👁 黑棋回合' : '👁 白棋回合';
-        reminder.className = 'turn-reminder opponent-turn';
-      } else if(myColor === currentPlayer) {
-        reminder.innerText = myColor === 1 ? '⚫ 你的回合 — 请落子' : '⚪ 你的回合 — 请落子';
-        reminder.className = 'turn-reminder my-turn';
-      } else {
-        reminder.innerText = currentPlayer === 1 ? '⚫ 对方回合 — 请等待' : '⚪ 对方回合 — 请等待';
-        reminder.className = 'turn-reminder opponent-turn';
+    window.Core.exitToLobbyOnline({
+      state: window.GAME,
+      myNick: myNick,
+      broadcastToAll: broadcastToAll,
+      initBoardDataFn: initBoardData,
+      showToastFn: showToast,
+      updateUIFns: {
+        updateLobbyUI: function() { window.UI.updateLobbyUI(window.GAME.lobbySeats, window.GAME.isHost, window.GAME.roomGameMode); },
+        updateTurnDisplay: function() { window.UI.updateTurnDisplay(window.GAME.gameStarted, window.GAME.gameOver, window.GAME.winner, window.GAME.currentPlayer, window.GAME.mySeat); }
       }
-    }
+    });
   }
 
-  function updateGameInfoPanel() {
-    let blackM = lobbySeats.black ? (allMembers.get(lobbySeats.black)?.name || '棋手') : '空位';
-    let whiteM = lobbySeats.white ? (allMembers.get(lobbySeats.white)?.name || '棋手') : '空位';
-    document.getElementById('blackPlayerName').innerText = blackM;
-    document.getElementById('whitePlayerName').innerText = whiteM;
-    let role = mySeat === 'black' ? '黑棋' : (mySeat === 'white' ? '白棋' : '观战');
-    document.getElementById('myRoleDisplay').innerText = role;
-    document.getElementById('gameStatus').innerText = gameStarted ? (gameOver ? '终局' : '对弈中') : '未开始';
-    let modeText = isProMode ? '专业模式（禁手规则）' : '业余模式（自由对弈）';
-    document.getElementById('gameModeDisplay').innerText = modeText;
+  // ========== 广播 ==========
+  function broadcastToAll(msg, exceptId) {
+    window.GAME.connections.forEach((val, id) => {
+      if (id !== exceptId && val.conn.open) {
+        try { val.conn.send(msg); } catch (e) {}
+      }
+    });
   }
 
+  // ========== 消息接收 ==========
+  function onReceiveMessage(fromId, data) {
+    window.Core.handleOnlineMessage(fromId, data, {
+      state: window.GAME,
+      myNick: myNick,
+      broadcastToAll: broadcastToAll,
+      drawBoardFn: drawBoard,
+      initBoardDataFn: initBoardData,
+      checkWinFn: checkWinWithLine,
+      endGameFn: endGame,
+      showWinnerMsgFn: showWinnerMsg,
+      showToastFn: showToast,
+      onReceiveMessageFn: onReceiveMessage,
+      addChatMsgFn: window.Core.addChatMessageOnline,
+      updateUIFns: {
+        updateLobbyUI: function() { window.UI.updateLobbyUI(window.GAME.lobbySeats, window.GAME.isHost, window.GAME.roomGameMode); },
+        updateTurnDisplay: function() { window.UI.updateTurnDisplay(window.GAME.gameStarted, window.GAME.gameOver, window.GAME.winner, window.GAME.currentPlayer, window.GAME.mySeat); },
+        updateGameInfoPanel: function() { window.UI.updateGameInfoPanel(window.GAME.lobbySeats, window.GAME.allMembers, window.GAME.mySeat, window.GAME.gameStarted, window.GAME.gameOver, window.GAME.isProMode); },
+        updateGameButtons: function() { window.UI.updateGameButtons(window.GAME.mySeat, window.GAME.gameStarted, window.GAME.gameOver); }
+      }
+    });
+  }
+
+  // ========== 聊天、投降、平局 ==========
   function sendChatMsg() {
-    let inp = document.getElementById('chatMsgInput');
-    let txt = inp.value.trim();
-    if(!txt) return;
-    addChatMessage(myNick, txt, 'me');
-    broadcastToAll({ type: 'chatMsg', sender: myNick, text: txt });
-    inp.value = '';
-  }
-
-  function addChatMessage(sender, text, type) {
-    let container = document.getElementById('chatMessagesArea');
-    let div = document.createElement('div');
-    div.className = 'chat-msg ' + type;
-    div.innerText = type === 'system' ? text : sender + ': ' + text;
-    container.appendChild(div);
-    container.scrollTop = container.scrollHeight;
-  }
-
-  function updateGameButtons() {
-    let btnSur = document.getElementById('btnSurrender');
-    let btnDraw = document.getElementById('btnDraw');
-    let canUse = (mySeat === 'black' || mySeat === 'white') && gameStarted && !gameOver;
-    if(btnSur) {
-      btnSur.disabled = !canUse;
-      btnSur.style.opacity = canUse ? '1' : '0.5';
-    }
-    if(btnDraw) {
-      btnDraw.disabled = !canUse;
-      btnDraw.style.opacity = canUse ? '1' : '0.5';
-    }
+    window.Core.sendChatMsgOnline({
+      state: window.GAME,
+      myNick: myNick,
+      broadcastToAll: broadcastToAll
+    });
   }
 
   function sendSurrender() {
-    if(!gameStarted || gameOver) return;
-    if(mySeat !== 'black' && mySeat !== 'white') return;
-    if(!confirm('你是否确定要投降？')) return;
-    let myColor = mySeat === 'black' ? 1 : 2;
-    broadcastToAll({ type: 'surrender', from: myPeerId, player: myColor, senderName: myNick });
-    gameOver = true;
-    winner = (myColor === 1 ? 2 : 1);
-    updateTurnDisplay();
-    updateGameInfoPanel();
-    showWinnerMsg();
-    showToast('你已投降');
+    window.Core.sendSurrenderOnline({
+      state: window.GAME,
+      myNick: myNick,
+      broadcastToAll: broadcastToAll,
+      showToastFn: showToast,
+      showWinnerMsgFn: showWinnerMsg,
+      updateUIFns: {
+        updateTurnDisplay: function() { window.UI.updateTurnDisplay(window.GAME.gameStarted, window.GAME.gameOver, window.GAME.winner, window.GAME.currentPlayer, window.GAME.mySeat); },
+        updateGameInfoPanel: function() { window.UI.updateGameInfoPanel(window.GAME.lobbySeats, window.GAME.allMembers, window.GAME.mySeat, window.GAME.gameStarted, window.GAME.gameOver, window.GAME.isProMode); }
+      }
+    });
   }
 
   function sendDrawRequest() {
-    if(!gameStarted || gameOver) return;
-    if(mySeat !== 'black' && mySeat !== 'white') return;
-    broadcastToAll({ type: 'drawRequest', from: myPeerId, senderName: myNick });
-    showToast('已发送平局申请');
+    window.Core.sendDrawRequestOnline({
+      state: window.GAME,
+      myNick: myNick,
+      broadcastToAll: broadcastToAll,
+      showToastFn: showToast
+    });
   }
 
-  function requestStartGame() {
-    if(isHost && lobbySeats.black && lobbySeats.white) {
-      initBoardData();
-      gameStarted = true;
-      broadcastToAll({ type: 'gameStart', gameMode: roomGameMode });
-      broadcastToAll({ type: 'boardSync', board: board, currentPlayer: currentPlayer, gameOver: gameOver, winner: winner, moveHistory: moveHistory });
-      document.getElementById('lobbyScreen').classList.add('hidden');
-      document.getElementById('gameScreen').classList.remove('hidden');
-      drawBoard();
-      updateGameInfoPanel();
-      updateTurnDisplay();
-      updateGameButtons();
-    } else {
-      showToast('双方入座后才可开始');
+  // ========== 请求座位 ==========
+  function requestSeat(targetSeat) {
+    if (!window.GAME.roomId) {
+      showToast('请先创建或加入房间');
+      return;
     }
-  }
+    if (window.GAME.mySeat === targetSeat) return;
 
-  function validateNickname() {
-    // 昵称已从初始页面传入，直接通过
-    return true;
-  }
+    let occupant = window.Core.getSeatOccupant(targetSeat, window.GAME.lobbySeats);
+    if (occupant && occupant !== window.GAME.myPeerId) {
+      showToast('该位置已有人');
+      return;
+    }
 
-  function lockNicknameDisplay() {
-    let pBtn = document.getElementById('personalCenterBtn');
-    pBtn.innerText = '🧑 ' + myNick;
-    pBtn.onclick = null;
-    pBtn.style.cursor = 'default';
-    pBtn.style.background = 'transparent';
-    pBtn.style.border = 'none';
-  }
-
-  async function createRoom() {
-    if(peer) peer.destroy();
-    roomId = genRoomCode();
-    isHost = true;
-    myPeerId = roomId;
-    
-    document.getElementById('roomCodeDisplay').innerText = roomId;
-    document.getElementById('gameRoomCode').innerText = roomId;
-    
-    allMembers.clear();
-    lobbySeats = { black: null, white: null, spectators: Array(6).fill(null) };
-    mySeat = null;
-    gameStarted = false;
-    initBoardData();
-    assignedPeers.clear();
-    allMembers.set(myPeerId, { name: myNick, seat: null, online: true });
-
-    lobbySeats.black = myPeerId;
-    mySeat = 'black';
-    let mem = allMembers.get(myPeerId);
-    if(mem) mem.seat = 'black';
-
-    peer = new Peer(roomId, { 
-      host: '0.peerjs.com', 
-      port: 443, 
-      secure: true,
-      config: { iceServers: ICE_SERVERS }
-    });
-    peer.on('open', () => { 
-      updateConnUI(true); 
-      startHeartbeat();
-      updateLobbyUI();
-    });
-    peer.on('connection', (conn) => {
-      let clientName = conn.metadata?.name || '棋客';
-      allMembers.set(conn.peer, { name: clientName, seat: null, online: true });
-      connections.set(conn.peer, { conn: conn, lastSeen: Date.now() });
-      conn.on('data', (d) => onReceiveMessage(conn.peer, d));
-      conn.on('open', () => {
-        if (assignedPeers.has(conn.peer)) {
-          let oldConn = connections.get(conn.peer);
-          if (oldConn && oldConn.conn !== conn) {
-            assignedPeers.delete(conn.peer);
-            clearAllSeatsOf(conn.peer);
-            connections.delete(conn.peer);
-          } else {
-            return;
-          }
-        }
-        assignedPeers.add(conn.peer);
-        
-        let seat = autoAssignSeat(conn.peer);
-        if(seat) handleSeatChange(conn.peer, seat);
-        
-        let memberList = Array.from(allMembers.entries()).map(([id, val]) => ({ id: id, name: val.name, seat: val.seat }));
-        conn.send({
-          type: 'fullSync',
-          seats: lobbySeats,
-          gameStarted: gameStarted,
-          board: board,
-          currentPlayer: currentPlayer,
-          gameOver: gameOver,
-          winner: winner,
-          moveHistory: moveHistory,
-          members: memberList,
-          mySeat: allMembers.get(conn.peer)?.seat,
-          gameMode: roomGameMode
-        });
-        broadcastToAll({ type: 'memberUpdate', peerId: conn.peer, name: clientName, seat: allMembers.get(conn.peer)?.seat });
-      });
-      conn.on('close', () => {
-        let mem = allMembers.get(conn.peer);
-        allMembers.delete(conn.peer);
-        connections.delete(conn.peer);
-        assignedPeers.delete(conn.peer);
-        clearAllSeatsOf(conn.peer);
-        broadcastToAll({ type: 'memberUpdate', peerId: conn.peer, name: mem?.name || '棋客', seat: null });
-        updateLobbyUI();
-        if(gameStarted) updateGameInfoPanel();
-      });
-    });
-    peer.on('error', () => {});
-
-    document.getElementById('entryScreen').classList.add('hidden');
-    document.getElementById('lobbyScreen').classList.remove('hidden');
-    renderSpectators();
-    updateLobbyUI();
-    lockNicknameDisplay();
-  }
-
-  async function joinRoom(code) {
-    if(peer) peer.destroy();
-    roomId = code.toUpperCase();
-    isHost = false;
-    myPeerId = 'player_' + Date.now() + '_' + Math.floor(Math.random() * 10000);
-    
-    document.getElementById('roomCodeDisplay').innerText = roomId;
-    document.getElementById('gameRoomCode').innerText = roomId;
-    
-    allMembers.clear();
-    mySeat = null;
-    initBoardData();
-    gameStarted = false;
-
-    peer = new Peer(myPeerId, { 
-      host: '0.peerjs.com', 
-      port: 443, 
-      secure: true,
-      config: { iceServers: ICE_SERVERS }
-    });
-    peer.on('open', () => {
-      updateConnUI(true);
-      let conn = peer.connect(roomId, {
-        metadata: { name: myNick },
-        reliable: true,
-        serialization: 'json'
-      });
-      setupJoinerConnection(conn);
-    });
-    peer.on('error', () => { showToast('房间不存在或网络错误'); });
-
-    document.getElementById('entryScreen').classList.add('hidden');
-    document.getElementById('lobbyScreen').classList.remove('hidden');
-    renderSpectators();
-    updateLobbyUI();
-    lockNicknameDisplay();
-  }
-
-  function startHeartbeat() {
-    if(heartbeatTimer) clearInterval(heartbeatTimer);
-    if(healthCheckTimer) clearInterval(healthCheckTimer);
-
-    // 所有人（房主+加入者）都定期发 ping
-    heartbeatTimer = setInterval(() => {
-      broadcastToAll({ type: 'ping', from: myPeerId, time: Date.now() });
-    }, HEARTBEAT_INTERVAL);
-
-    // 定期检查有没有连接超时
-    healthCheckTimer = setInterval(() => {
-      let now = Date.now();
-      connections.forEach((val, id) => {
-        if (now - val.lastSeen > CONNECTION_TIMEOUT) {
-          console.log('连接超时:', id);
-          attemptReconnect(id);
-        }
-      });
-    }, HEARTBEAT_INTERVAL);
-  }
-
-  function attemptReconnect(targetId) {
-    if (!peer || peer.destroyed) return;
-    if (isHost) return; // 房主不主动重连，等客户端回来
-    if (targetId === roomId) {
-      let existing = connections.get(roomId);
-      if (existing && existing.conn && existing.conn.open) return;
-      showToast('连接断开，正在重连...');
-      try {
-        let conn = peer.connect(roomId, {
-          metadata: { name: myNick },
-          reliable: true,
-          serialization: 'json'
-        });
-        setupJoinerConnection(conn);
-      } catch (e) {
-        console.error('重连失败:', e);
+    if (!window.GAME.isHost) {
+      let connToHost = window.GAME.connections.get(window.GAME.roomId);
+      if (connToHost && connToHost.conn.open) {
+        connToHost.conn.send({ type: 'seatRequest', targetSeat: targetSeat });
+      } else {
+        showToast('与房主连接已断开');
       }
+    } else {
+      let newSeat = window.Core.handleSeatChange(
+        window.GAME.myPeerId,
+        targetSeat,
+        window.GAME.lobbySeats,
+        window.GAME.allMembers,
+        window.GAME.myPeerId,
+        broadcastToAll
+      );
+      if (newSeat !== null) window.GAME.mySeat = newSeat;
+      window.UI.updateLobbyUI(window.GAME.lobbySeats, window.GAME.isHost, window.GAME.roomGameMode);
     }
   }
+  window.requestSeatGlobal = requestSeat;
 
-  function setupJoinerConnection(conn) {
-    conn.on('open', () => {
-      connections.set(roomId, { conn: conn, lastSeen: Date.now() });
-      conn.send({ type: 'joinRequest', myId: myPeerId, name: myNick });
-      startHeartbeat(); // 加入者也启动心跳
+  // ========== 开始对局 ==========
+  function requestStartGame() {
+    if (!window.GAME.isHost) {
+      showToast('只有房主（黑棋）可以开始游戏');
+      return;
+    }
+    if (!window.GAME.lobbySeats.black || !window.GAME.lobbySeats.white) {
+      showToast('双方入座后才可开始');
+      return;
+    }
+
+    let blackOnline = window.GAME.allMembers.get(window.GAME.lobbySeats.black)?.online !== false;
+    let whiteOnline = window.GAME.allMembers.get(window.GAME.lobbySeats.white)?.online !== false;
+    if (!blackOnline || !whiteOnline) {
+      showToast('有玩家离线，请等待');
+      return;
+    }
+
+    initBoardData();
+    window.GAME.gameStarted = true;
+    broadcastToAll({ type: 'gameStart', gameMode: window.GAME.roomGameMode });
+    broadcastToAll({
+      type: 'boardSync',
+      board: window.GAME.board,
+      currentPlayer: window.GAME.currentPlayer,
+      gameOver: window.GAME.gameOver,
+      winner: window.GAME.winner,
+      moveHistory: window.GAME.moveHistory
     });
-    conn.on('data', (d) => onReceiveMessage(roomId, d));
-    conn.on('close', () => {
-      console.log('与房主断开');
-      connections.delete(roomId);
-      setTimeout(() => attemptReconnect(roomId), 3000);
-    });
-    conn.on('error', (err) => {
-      console.error('连接错误:', err);
+
+    document.getElementById('lobbyScreen').classList.add('hidden');
+    document.getElementById('gameScreen').classList.remove('hidden');
+    drawBoard();
+    window.UI.updateGameInfoPanel(window.GAME.lobbySeats, window.GAME.allMembers, window.GAME.mySeat, window.GAME.gameStarted, window.GAME.gameOver, window.GAME.isProMode);
+    window.UI.updateTurnDisplay(window.GAME.gameStarted, window.GAME.gameOver, window.GAME.winner, window.GAME.currentPlayer, window.GAME.mySeat);
+    window.UI.updateGameButtons(window.GAME.mySeat, window.GAME.gameStarted, window.GAME.gameOver);
+  }
+
+  // ========== 落子 ==========
+  function tryPlace(row, col) {
+    window.Core.tryPlaceOnline(row, col, {
+      state: window.GAME,
+      myNick: myNick,
+      broadcastToAll: broadcastToAll,
+      drawBoardFn: drawBoard,
+      checkWinFn: checkWinWithLine,
+      endGameFn: endGame,
+      showToastFn: showToast,
+      showWinnerMsgFn: showWinnerMsg,
+      updateUIFns: {
+        updateTurnDisplay: function() { window.UI.updateTurnDisplay(window.GAME.gameStarted, window.GAME.gameOver, window.GAME.winner, window.GAME.currentPlayer, window.GAME.mySeat); },
+        updateGameInfoPanel: function() { window.UI.updateGameInfoPanel(window.GAME.lobbySeats, window.GAME.allMembers, window.GAME.mySeat, window.GAME.gameStarted, window.GAME.gameOver, window.GAME.isProMode); }
+      }
     });
   }
 
+  // ========== 事件绑定 ==========
   document.getElementById('createRoomBtn').onclick = () => {
-    if(!validateNickname()) return;
-    createRoom();
+    P2PNetwork.createRoom({
+      state: window.GAME,
+      myNick: myNick,
+      broadcastToAll: broadcastToAll,
+      onReceiveMessageFn: onReceiveMessage,
+      initBoardDataFn: initBoardData,
+      showToastFn: showToast
+    });
   };
+
   document.getElementById('showJoinBtn').onclick = () => {
     let panel = document.getElementById('joinRoomPanel');
     panel.style.display = panel.style.display === 'none' ? 'flex' : 'none';
   };
+
   document.getElementById('confirmJoinBtn').onclick = () => {
-    if(!validateNickname()) return;
     let code = document.getElementById('joinRoomCodeInput').value.trim().toUpperCase();
-    if(code) joinRoom(code);
-    else showToast('输入房间码');
+    if (code) {
+      P2PNetwork.joinRoom({
+        state: window.GAME,
+        myNick: myNick,
+        broadcastToAll: broadcastToAll,
+        onReceiveMessageFn: onReceiveMessage,
+        initBoardDataFn: initBoardData,
+        showToastFn: showToast
+      }, code);
+    } else showToast('输入房间码');
   };
 
   canvas.addEventListener('click', (e) => {
-    if(!gameStarted || gameOver) return;
+    if (!window.GAME.gameStarted || window.GAME.gameOver) return;
     let rect = canvas.getBoundingClientRect();
     let scale = canvas.width / rect.width;
     let mx = (e.clientX - rect.left) * scale;
     let myY = (e.clientY - rect.top) * scale;
     let col = Math.round((mx - MARGIN) / CELL_SIZE);
     let row = Math.round((myY - MARGIN) / CELL_SIZE);
-    if(row >= 0 && row < BOARD_SIZE && col >= 0 && col < BOARD_SIZE && board[row][col] === 0) {
+    if (row >= 0 && row < BOARD_SIZE && col >= 0 && col < BOARD_SIZE && window.GAME.board[row][col] === 0) {
       tryPlace(row, col);
     }
   });
 
   window.addEventListener('resize', () => {
-    if(!document.getElementById('gameScreen').classList.contains('hidden')) drawBoard();
+    if (!document.getElementById('gameScreen').classList.contains('hidden')) drawBoard();
   });
 
-  // 初始化
-  updateEntryDisplay();
-  renderSpectators();
-  showToast('欢迎！请创建或加入房间');
+  // ========== 启动：等待页面加载完成后初始化 Supabase ==========
+  async function initialize() {
+    updateEntryDisplay();
+    window.UI.renderSpectators();
+    // 尝试初始化 Supabase（带重试）
+    await initSupabase();
+    console.log('🚀 P2P 联机已启动，战绩保存功能已就绪');
+    showToast('欢迎！请创建或加入房间');
+  }
+
+  // 确保在 DOM 加载完成后执行
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initialize);
+  } else {
+    initialize();
+  }
 </script>
 </body>
 </html>
