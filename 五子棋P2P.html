@@ -13,7 +13,6 @@
   <script src="online-core.js"></script>
   <script src="online-p2p.js"></script>
   <script src="audio.js"></script>
-  <!-- 音乐播放器 -->
   <link rel="stylesheet" href="music-player.css">
   <script src="music-player.js"></script>
   <base target="_blank">
@@ -35,6 +34,36 @@
     .top-btn:hover {
       background: rgba(200, 160, 100, 0.35);
     }
+    .lobby-voice-bar {
+      margin: 12px 0 20px;
+    }
+    /* 音量指示器微调 */
+    .volume-indicator {
+      display: flex;
+      align-items: flex-end;
+      gap: 3px;
+      height: 28px;
+      margin: 0 6px;
+    }
+    .vol-bar {
+      display: inline-block;
+      width: 6px;
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 2px 2px 0 0;
+      transition: background 0.15s ease, height 0.15s ease, box-shadow 0.15s ease;
+      height: 100%;
+      min-height: 4px;
+      max-height: 28px;
+    }
+    .vol-bar.active {
+      background: #ffffff;
+      box-shadow: 0 0 10px rgba(255, 255, 255, 0.6);
+    }
+    .vol-bar[data-level="1"].active { height: 20%; }
+    .vol-bar[data-level="2"].active { height: 40%; }
+    .vol-bar[data-level="3"].active { height: 60%; }
+    .vol-bar[data-level="4"].active { height: 80%; }
+    .vol-bar[data-level="5"].active { height: 100%; }
   </style>
 </head>
 <body>
@@ -70,6 +99,26 @@
 
 <div id="lobbyScreen" class="hidden">
   <div class="lobby-mode-bar" id="lobbyModeBar">🎮 当前模式：业余模式</div>
+
+  <!-- ===== 大厅语音控制栏 ===== -->
+  <div class="voice-control-bar lobby-voice-bar">
+    <button class="voice-btn mic-btn inactive-mic" onclick="toggleMic()">
+      <span>🎤</span>
+      <span class="mic-status">关</span>
+    </button>
+    <div class="volume-indicator">
+      <span class="vol-bar" data-level="1"></span>
+      <span class="vol-bar" data-level="2"></span>
+      <span class="vol-bar" data-level="3"></span>
+      <span class="vol-bar" data-level="4"></span>
+      <span class="vol-bar" data-level="5"></span>
+    </div>
+    <button class="voice-btn speaker-btn inactive-speaker" onclick="toggleSpeaker()">
+      <span>🔊</span>
+      <span class="speaker-status">关</span>
+    </button>
+  </div>
+
   <div class="lobby-layout">
     <div class="lobby-column col-black">
       <div class="lobby-column-header">⚫ 黑棋方</div>
@@ -120,7 +169,29 @@
         <div class="turn-indicator" id="turnIndicator">⚫ 黑棋回合</div>
         <div id="winnerMessage"></div>
       </div>
-      <div class="chat-messages" id="chatMessagesArea"><div class="chat-msg system">🎋 欢迎来到棋室，落子无悔</div></div>
+
+      <!-- ===== 游戏语音控制栏 ===== -->
+      <div class="voice-control-bar">
+        <button class="voice-btn mic-btn inactive-mic" onclick="toggleMic()">
+          <span>🎤</span>
+          <span class="mic-status">关</span>
+        </button>
+        <div class="volume-indicator">
+          <span class="vol-bar" data-level="1"></span>
+          <span class="vol-bar" data-level="2"></span>
+          <span class="vol-bar" data-level="3"></span>
+          <span class="vol-bar" data-level="4"></span>
+          <span class="vol-bar" data-level="5"></span>
+        </div>
+        <button class="voice-btn speaker-btn inactive-speaker" onclick="toggleSpeaker()">
+          <span>🔊</span>
+          <span class="speaker-status">关</span>
+        </button>
+      </div>
+
+      <div class="chat-messages" id="chatMessagesArea">
+        <div class="chat-msg system">🎋 欢迎来到棋室，落子无悔</div>
+      </div>
       <div class="chat-input-area">
         <input type="text" id="chatMsgInput" placeholder="说点什么..." maxlength="200" onkeypress="if(event.key==='Enter') sendChatMsg()">
         <button class="game-btn" onclick="sendChatMsg()">传讯</button>
@@ -136,6 +207,9 @@
 </div>
 
 <script>
+  // ========== 麦克风增益倍数（可调节） ==========
+  const MIC_GAIN = 2.5;   // 1.0 为原始音量，2.5 为放大 2.5 倍
+
   // ========== 音频触发标志 ==========
   let musicStarted = false;
 
@@ -451,6 +525,7 @@
         updateTurnDisplay: function() { window.UI.updateTurnDisplay(window.GAME.gameStarted, window.GAME.gameOver, window.GAME.winner, window.GAME.currentPlayer, window.GAME.mySeat); }
       }
     });
+    stopAllAudio();
   }
 
   // ========== 广播 ==========
@@ -619,8 +694,289 @@
     if (window.peer) {
       try { window.peer.destroy(); } catch(e) {}
     }
+    stopAllAudio();
     window.location.href = 'index.html';
   }
+
+  // ========== 语音功能（带麦克风增益） ==========
+  let _isMicOn = false;
+  let _isSpeakerOn = false;
+  let _localStream = null;      // 原始流（未经增益）
+  let _processedStream = null;  // 经过增益后的流（用于发送）
+  window._localStream = _localStream;   // 注意：发送用的是 _processedStream
+  window._isMicOn = _isMicOn;
+  window._isSpeakerOn = _isSpeakerOn;
+
+  let audioContext = null;
+  let analyser = null;
+  let dataArray = null;
+  let animationId = null;
+  let audioSourceNode = null;
+  let gainNode = null;
+  let destNode = null;
+
+  initAudio();
+
+  function updateVolumeIndicator(level) {
+    document.querySelectorAll('.vol-bar').forEach((bar, index) => {
+      if (index < level) {
+        bar.classList.add('active');
+      } else {
+        bar.classList.remove('active');
+      }
+    });
+  }
+
+  function updateMicButtons(isOn) {
+    document.querySelectorAll('.mic-btn').forEach(btn => {
+      btn.classList.remove('active-mic', 'inactive-mic');
+      btn.classList.add(isOn ? 'active-mic' : 'inactive-mic');
+    });
+    document.querySelectorAll('.mic-status').forEach(el => {
+      el.innerText = isOn ? '开' : '关';
+    });
+  }
+
+  function updateSpeakerButtons(isOn) {
+    document.querySelectorAll('.speaker-btn').forEach(btn => {
+      btn.classList.remove('active-speaker', 'inactive-speaker');
+      btn.classList.add(isOn ? 'active-speaker' : 'inactive-speaker');
+    });
+    document.querySelectorAll('.speaker-status').forEach(el => {
+      el.innerText = isOn ? '开' : '关';
+    });
+  }
+
+  async function toggleMic() {
+    console.log('🎤 toggleMic 被点击');
+    if (!window.peer) {
+      showToast('请先创建或加入房间');
+      console.warn('⚠️ 无 Peer 实例');
+      return;
+    }
+    if (!_isMicOn) {
+      try {
+        console.log('🎤 正在请求麦克风权限...');
+        const rawStream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true,
+            sampleRate: 48000,
+            sampleSize: 16,
+            channelCount: 1
+          }
+        });
+        console.log('✅ 原始麦克风流已获取');
+
+        // ---- 创建 AudioContext 并处理增益 ----
+        if (!audioContext) {
+          audioContext = new (window.AudioContext || window.webkitAudioContext)();
+          analyser = audioContext.createAnalyser();
+          analyser.fftSize = 256;
+          dataArray = new Uint8Array(analyser.frequencyBinCount);
+        }
+        if (audioContext.state === 'suspended') {
+          await audioContext.resume();
+          console.log('✅ AudioContext 已恢复');
+        }
+
+        // 创建来源节点
+        const source = audioContext.createMediaStreamSource(rawStream);
+        // 创建增益节点
+        gainNode = audioContext.createGain();
+        gainNode.gain.value = MIC_GAIN;   // 设置增益倍数
+        // 创建目标节点（用于输出处理后的流）
+        destNode = audioContext.createMediaStreamDestination();
+        // 连接：原始流 -> 增益 -> 分析器 + 输出
+        source.connect(gainNode);
+        gainNode.connect(analyser);       // 分析器读取放大后的信号，用于音量指示器
+        gainNode.connect(destNode);       // 输出放大后的流
+
+        // 保存节点引用以便后续断开
+        audioSourceNode = source;
+        // 将处理后的流赋值给发送流
+        _processedStream = destNode.stream;
+        window._localStream = _processedStream;   // 发送使用放大后的流
+
+        // 同时保存原始流以便停止时释放
+        _localStream = rawStream;
+
+        _isMicOn = true;
+        window._isMicOn = true;
+
+        updateMicButtons(true);
+
+        // 启动音量检测（分析器已连接，直接使用即可）
+        if (animationId) cancelAnimationFrame(animationId);
+        function detect() {
+          if (!_isMicOn) {
+            updateVolumeIndicator(0);
+            animationId = null;
+            return;
+          }
+          analyser.getByteFrequencyData(dataArray);
+          let sum = 0;
+          for (let i = 0; i < dataArray.length; i++) {
+            sum += dataArray[i];
+          }
+          let avg = sum / dataArray.length;
+          let level = 0;
+          if (avg > 10) level = 1;
+          if (avg > 30) level = 2;
+          if (avg > 60) level = 3;
+          if (avg > 100) level = 4;
+          if (avg > 150) level = 5;
+          updateVolumeIndicator(level);
+          animationId = requestAnimationFrame(detect);
+        }
+        detect();
+
+        showToast(`🎤 麦克风已开启（音量放大 ${MIC_GAIN} 倍）`);
+        console.log(`✅ 麦克风增益已应用: ${MIC_GAIN}x，发送流有效`);
+
+        // 向所有已连接的对端发起音频呼叫
+        const peers = Array.from(window.GAME.connections.keys());
+        console.log('📞 向', peers.length, '个对端发起音频呼叫');
+        for (let peerId of peers) {
+          window.startCallToPeer(peerId);
+        }
+      } catch (err) {
+        console.error('❌ 获取麦克风失败:', err);
+        showToast('无法访问麦克风，请检查权限设置');
+      }
+    } else {
+      console.log('🎤 正在关闭麦克风...');
+      _isMicOn = false;
+      window._isMicOn = false;
+
+      updateMicButtons(false);
+      updateVolumeIndicator(0);
+      if (animationId) {
+        cancelAnimationFrame(animationId);
+        animationId = null;
+      }
+
+      // 断开音频节点
+      if (audioSourceNode) {
+        try { audioSourceNode.disconnect(); } catch(e) {}
+        audioSourceNode = null;
+      }
+      if (gainNode) {
+        try { gainNode.disconnect(); } catch(e) {}
+        gainNode = null;
+      }
+      if (destNode) {
+        try { destNode.disconnect(); } catch(e) {}
+        destNode = null;
+      }
+
+      // 停止并释放原始流
+      if (_localStream) {
+        _localStream.getTracks().forEach(t => t.stop());
+        _localStream = null;
+      }
+      if (_processedStream) {
+        _processedStream.getTracks().forEach(t => t.stop());
+        _processedStream = null;
+      }
+      window._localStream = null;
+
+      // 关闭所有音频呼叫和远端元素
+      if (window._audioCalls) {
+        for (let [peerId, call] of window._audioCalls) {
+          try { call.close(); } catch(e) {}
+        }
+        window._audioCalls.clear();
+      }
+      if (window._remoteAudioElements) {
+        for (let [peerId, audio] of window._remoteAudioElements) {
+          audio.pause();
+          audio.srcObject = null;
+          audio.remove();
+        }
+        window._remoteAudioElements.clear();
+      }
+      showToast('🎤 麦克风已关闭');
+      console.log('🔇 麦克风已关闭');
+    }
+  }
+
+  function toggleSpeaker() {
+    console.log('🔊 toggleSpeaker 被点击');
+    _isSpeakerOn = !_isSpeakerOn;
+    window._isSpeakerOn = _isSpeakerOn;
+    console.log('🔊 听筒状态变为:', _isSpeakerOn ? '开' : '关');
+
+    updateSpeakerButtons(_isSpeakerOn);
+
+    if (_isSpeakerOn) {
+      showToast('🔊 听筒已开启');
+      if (window._remoteAudioElements && window._remoteAudioElements.size > 0) {
+        console.log('🔊 共有', window._remoteAudioElements.size, '个远端音频元素');
+        for (let [peerId, audio] of window._remoteAudioElements) {
+          audio.muted = false;
+          audio.play().then(() => {
+            console.log('✅ 播放成功:', peerId);
+          }).catch(e => {
+            console.warn('❌ 播放失败:', peerId, e);
+          });
+        }
+      } else {
+        console.warn('⚠️ 没有远端音频元素，可能还未收到流');
+      }
+    } else {
+      showToast('🔇 听筒已关闭');
+      if (window._remoteAudioElements) {
+        for (let [peerId, audio] of window._remoteAudioElements) {
+          audio.muted = true;
+          audio.pause();
+        }
+      }
+    }
+  }
+
+  function stopAllAudio() {
+    console.log('🔇 停止所有音频');
+    if (_localStream) {
+      _localStream.getTracks().forEach(t => t.stop());
+      _localStream = null;
+    }
+    if (_processedStream) {
+      _processedStream.getTracks().forEach(t => t.stop());
+      _processedStream = null;
+    }
+    window._localStream = null;
+    _isMicOn = false;
+    window._isMicOn = false;
+    if (animationId) {
+      cancelAnimationFrame(animationId);
+      animationId = null;
+    }
+    updateVolumeIndicator(0);
+    updateMicButtons(false);
+    updateSpeakerButtons(false);
+
+    if (window._remoteAudioElements) {
+      for (let [peerId, audio] of window._remoteAudioElements) {
+        audio.pause();
+        audio.srcObject = null;
+        audio.remove();
+      }
+      window._remoteAudioElements.clear();
+    }
+    if (window._audioCalls) {
+      for (let [peerId, call] of window._audioCalls) {
+        try { call.close(); } catch(e) {}
+      }
+      window._audioCalls.clear();
+    }
+    console.log('✅ 所有音频已停止');
+  }
+
+  window.toggleMic = toggleMic;
+  window.toggleSpeaker = toggleSpeaker;
+  window.stopAllAudio = stopAllAudio;
 
   // ========== 事件绑定 ==========
   document.getElementById('createRoomBtn').onclick = () => {
@@ -684,8 +1040,8 @@
     updateEntryDisplay();
     window.UI.renderSpectators();
     await initSupabase();
-    console.log('🚀 P2P 联机已启动');
-    showToast('欢迎！请创建或加入房间');
+    console.log('🚀 P2P 联机已启动（高音质 + 麦克风增益）');
+    showToast(`欢迎！麦克风增益已预设为 ${MIC_GAIN}x`);
   }
 
   if (document.readyState === 'loading') {
