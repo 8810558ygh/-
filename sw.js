@@ -1,8 +1,8 @@
 // sw.js —— Service Worker 离线缓存
 
-const CACHE_NAME = 'gomoku-v2';
+const CACHE_NAME = 'gomoku-v3';
 
-// 所有需要离线缓存的文件列表（按你的实际文件名调整）
+// 所有需要离线缓存的文件列表
 const urlsToCache = [
   'index.html',
   '五子棋.html',
@@ -18,7 +18,12 @@ const urlsToCache = [
   'online-core.js',
   'online-p2p.js',
   'online-supabase.js',
- 'icons/apple-touch-icon.png',
+  'audio.js',
+  'music-player.css',
+  'music-player.js',
+  'audio/bg.mp3',
+  'audio/bg1.mp3',
+  'icons/apple-touch-icon.png',
   'icons/launchericon-72x72.png',
   'icons/launchericon-96x96.png',
   'icons/launchericon-144x144.png',
@@ -60,10 +65,9 @@ self.addEventListener('fetch', function(event) {
     caches.match(event.request)
       .then(function(response) {
         if (response) {
-          return response; // 缓存命中，直接返回
+          return response;
         }
         return fetch(event.request).then(function(response) {
-          // 联网请求成功后，缓存一份副本
           if (!response || response.status !== 200 || response.type !== 'basic') {
             return response;
           }
@@ -75,7 +79,6 @@ self.addEventListener('fetch', function(event) {
         });
       })
       .catch(function() {
-        // 离线时返回首页
         return caches.match('index.html');
       })
   );

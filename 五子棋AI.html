@@ -9,6 +9,11 @@
   <script src="rules.js"></script>
   <script src="ai.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.min.js"></script>
+  <!-- 音频控制 -->
+  <script src="audio.js"></script>
+  <!-- 音乐播放器 -->
+  <link rel="stylesheet" href="music-player.css">
+  <script src="music-player.js"></script>
   <style>
     #gameScreen { padding-top: 80px; }
     .board-wrap { max-width: 820px; }
@@ -153,6 +158,9 @@
   window.goToHall = function() {
     window.location.href = 'index.html';
   };
+
+  // 初始化音频（页面加载时，但暂不播放）
+  initAudio();
 
   // ===================== Supabase 战绩配置 =====================
   const SUPABASE_URL = 'https://txgemtxikpieaqcohglr.supabase.co';
@@ -403,6 +411,9 @@
   }
 
   function startGame() {
+    // 用户点击“开始对战”触发音乐播放
+    playBgMusic();
+
     playerIsBlack = selectedPlayerColor === 1;
     document.getElementById('setupScreen').classList.add('hidden');
     document.getElementById('gameScreen').classList.remove('hidden');

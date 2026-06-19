@@ -12,13 +12,15 @@
   <script src="online-ui.js"></script>
   <script src="online-core.js"></script>
   <script src="online-p2p.js"></script>
+  <script src="audio.js"></script>
+  <!-- 音乐播放器 -->
+  <link rel="stylesheet" href="music-player.css">
+  <script src="music-player.js"></script>
   <base target="_blank">
   <style>
     #gameScreen { padding-top: 80px; }
     .board-wrap { max-width: 820px; }
     .turn-reminder { font-size: 2.0rem; padding: 12px 24px; }
-
-    /* 新增顶栏按钮样式（与个人中心按钮对齐） */
     .top-btn {
       background: rgba(200, 160, 100, 0.2);
       border: 1px solid #e9bc6e;
@@ -44,7 +46,6 @@
     <div class="personal-btn" id="personalCenterBtn">🧑 个人中心</div>
     <div class="conn-status"><span class="conn-dot conn-connecting" id="statusDot"></span><span id="statusText">未连接</span></div>
     <div class="room-code-badge" id="roomCodeDisplay" onclick="copyRoomCode()">----</div>
-    <!-- 新增大厅按钮 -->
     <button class="top-btn" onclick="goToHall()">🏠 大厅</button>
   </div>
 </div>
@@ -135,7 +136,10 @@
 </div>
 
 <script>
-  // ===================== Supabase 战绩配置（带重试机制） =====================
+  // ========== 音频触发标志 ==========
+  let musicStarted = false;
+
+  // ===================== Supabase 战绩配置 =====================
   const SUPABASE_URL = 'https://txgemtxikpieaqcohglr.supabase.co';
   const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR4Z2VtdHhpa3BpZWFxY29oZ2xyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk4MDY1NTIsImV4cCI6MjA5NTM4MjU1Mn0.I0PHUfWmiDpBnfjmTBJ1u6ybzZzhsTG0uaLbKBrcN1c';
   let supabaseClient = null;
@@ -146,10 +150,7 @@
   const MAX_INIT_ATTEMPTS = 15;
 
   async function initSupabase() {
-    // 如果已初始化，直接返回
     if (supabaseClient) return;
-
-    // 检查 window.supabase 是否可用
     if (!window.supabase) {
       initAttempts++;
       if (initAttempts <= MAX_INIT_ATTEMPTS) {
@@ -158,11 +159,10 @@
           setTimeout(() => resolve(initSupabase()), 300);
         });
       } else {
-        console.error('❌ [P2P] Supabase 库加载失败，请检查网络或 CDN 地址');
+        console.error('❌ [P2P] Supabase 库加载失败');
         return;
       }
     }
-
     try {
       supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
       const { data: { session } } = await supabaseClient.auth.getSession();
@@ -177,12 +177,10 @@
         }
         console.log('✅ [P2P] 游客 ID:', myGuestId);
       }
-      // 监听登录状态变化
       supabaseClient.auth.onAuthStateChange((event, session) => {
         if (event === 'SIGNED_IN' && session) {
           currentUser = session.user;
           myGuestId = null;
-          console.log('✅ [P2P] 登录状态变化: 已登录', currentUser.id);
         } else if (event === 'SIGNED_OUT') {
           currentUser = null;
           myGuestId = localStorage.getItem('guest_id');
@@ -190,7 +188,6 @@
             myGuestId = 'guest_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
             localStorage.setItem('guest_id', myGuestId);
           }
-          console.log('✅ [P2P] 登录状态变化: 已退出，游客 ID:', myGuestId);
         }
       });
     } catch (e) {
@@ -200,30 +197,13 @@
 
   async function saveGameToSupabase() {
     console.log('📊 [P2P] 尝试保存战绩...');
-    // 确保客户端已初始化
     if (!supabaseClient) {
-      console.warn('⚠️ [P2P] Supabase 客户端未初始化，尝试初始化...');
       await initSupabase();
-      if (!supabaseClient) {
-        console.error('❌ [P2P] Supabase 客户端仍为 null，放弃保存');
-        return;
-      }
+      if (!supabaseClient) return;
     }
-
-    // 防止重复保存
-    if (gameSaved) {
-      console.log('⏭️ [P2P] 已保存过，跳过');
-      return;
-    }
-
-    if (!window.GAME.moveHistory || window.GAME.moveHistory.length === 0) {
-      console.warn('⚠️ [P2P] 没有落子记录，跳过保存');
-      return;
-    }
-    if (!window.GAME.gameOver) {
-      console.warn('⚠️ [P2P] 游戏未结束，跳过保存');
-      return;
-    }
+    if (gameSaved) return;
+    if (!window.GAME.moveHistory || window.GAME.moveHistory.length === 0) return;
+    if (!window.GAME.gameOver) return;
 
     const moves = window.GAME.moveHistory.map((m, i) => ({
       step: i + 1,
@@ -248,17 +228,6 @@
     const roomId = window.GAME.roomId || 'p2p_' + Date.now();
     const mode = window.GAME.roomGameMode || 'casual';
 
-    console.log('📤 [P2P] 准备插入数据:', {
-      user_id: uid,
-      guest_id: gid,
-      room_id: roomId,
-      black_player: blackName,
-      white_player: whiteName,
-      winner: winnerText,
-      game_mode: mode,
-      moves: moves
-    });
-
     try {
       const { data, error } = await supabaseClient.from('games').insert({
         user_id: uid,
@@ -274,8 +243,7 @@
         console.error('❌ [P2P] 插入失败:', error);
       } else {
         gameSaved = true;
-        console.log('✅ [P2P] 战绩已保存成功！', data);
-        // 清理旧记录
+        console.log('✅ [P2P] 战绩已保存成功！');
         const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString();
         let delQuery = supabaseClient.from('games').delete().lt('created_at', threeDaysAgo);
         if (currentUser) delQuery = delQuery.eq('user_id', currentUser.id);
@@ -289,7 +257,7 @@
     }
   }
 
-  // ==================== 配置与用户信息 ====================
+  // ==================== 配置 ====================
   const urlParams = new URLSearchParams(window.location.search);
   let gameMode = urlParams.get('mode') || 'casual';
   let isProMode = gameMode === 'pro';
@@ -301,7 +269,7 @@
   if (urlNick) { myNick = urlNick; localStorage.setItem('gonick', myNick); }
   if (!myNick) { myNick = '游客' + Math.floor(Math.random() * 900 + 100); localStorage.setItem('gonick', myNick); }
 
-  // ==================== 全局状态对象 ====================
+  // ==================== 全局状态 ====================
   window.GAME = {
     isHost: false,
     myPeerId: null,
@@ -421,8 +389,6 @@
     window.GAME.winner = winningPlayer;
     window.UI.updateTurnDisplay(window.GAME.gameStarted, window.GAME.gameOver, window.GAME.winner, window.GAME.currentPlayer, window.GAME.mySeat);
     window.UI.updateGameInfoPanel(window.GAME.lobbySeats, window.GAME.allMembers, window.GAME.mySeat, window.GAME.gameStarted, window.GAME.gameOver, window.GAME.isProMode);
-
-    // 保存战绩（无条件调用）
     saveGameToSupabase();
 
     if (reason === 'forbidden') {
@@ -519,7 +485,7 @@
     });
   }
 
-  // ========== 聊天、投降、平局 ==========
+  // ========== 聊天等 ==========
   function sendChatMsg() {
     window.Core.sendChatMsgOnline({
       state: window.GAME,
@@ -551,7 +517,7 @@
     });
   }
 
-  // ========== 请求座位 ==========
+  // ========== 座位 ==========
   function requestSeat(targetSeat) {
     if (!window.GAME.roomId) {
       showToast('请先创建或加入房间');
@@ -643,24 +609,22 @@
     });
   }
 
-  // ========== 返回大厅（新增） ==========
+  // ========== 返回大厅 ==========
   function goToHall() {
-    // 断开所有 P2P 连接
     if (window.GAME && window.GAME.connections) {
       window.GAME.connections.forEach((c) => {
         try { c.conn.close(); } catch(e) {}
       });
     }
-    // 销毁 Peer 实例
     if (window.peer) {
       try { window.peer.destroy(); } catch(e) {}
     }
-    // 跳转回首页
     window.location.href = 'index.html';
   }
 
   // ========== 事件绑定 ==========
   document.getElementById('createRoomBtn').onclick = () => {
+    playBgMusic();
     P2PNetwork.createRoom({
       state: window.GAME,
       myNick: myNick,
@@ -679,6 +643,7 @@
   document.getElementById('confirmJoinBtn').onclick = () => {
     let code = document.getElementById('joinRoomCodeInput').value.trim().toUpperCase();
     if (code) {
+      playBgMusic();
       P2PNetwork.joinRoom({
         state: window.GAME,
         myNick: myNick,
@@ -691,6 +656,11 @@
   };
 
   canvas.addEventListener('click', (e) => {
+    if (!musicStarted) {
+      playBgMusic();
+      musicStarted = true;
+    }
+
     if (!window.GAME.gameStarted || window.GAME.gameOver) return;
     let rect = canvas.getBoundingClientRect();
     let scale = canvas.width / rect.width;
@@ -707,17 +677,17 @@
     if (!document.getElementById('gameScreen').classList.contains('hidden')) drawBoard();
   });
 
-  // ========== 启动：等待页面加载完成后初始化 Supabase ==========
+  // ========== 启动 ==========
+  initAudio();
+
   async function initialize() {
     updateEntryDisplay();
     window.UI.renderSpectators();
-    // 尝试初始化 Supabase（带重试）
     await initSupabase();
-    console.log('🚀 P2P 联机已启动，战绩保存功能已就绪');
+    console.log('🚀 P2P 联机已启动');
     showToast('欢迎！请创建或加入房间');
   }
 
-  // 确保在 DOM 加载完成后执行
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initialize);
   } else {

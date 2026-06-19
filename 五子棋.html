@@ -7,6 +7,11 @@
   <link rel="stylesheet" href="style.css">
   <script src="goban.js"></script>
   <script src="rules.js"></script>
+  <!-- 音频控制 -->
+  <script src="audio.js"></script>
+  <!-- 音乐播放器 -->
+  <link rel="stylesheet" href="music-player.css">
+  <script src="music-player.js"></script>
   <style>
     /* 仅对本页面微调：增大棋盘、下移布局 */
     .game-container-local {
@@ -145,6 +150,9 @@
     let moveHistory = [];
     let winLines = [];
     let forbiddenLines = [];
+
+    // ===== 音频：首次点击棋盘触发播放 =====
+    let musicStarted = false;
 
     function initBoard() {
       board = Rules.initBoard(BOARD_SIZE);
@@ -382,6 +390,13 @@
     // ---------- 事件绑定 ----------
     function handleCanvasClick(e) {
       if (gameOver) return;
+
+      // 首次点击棋盘触发音乐
+      if (!musicStarted) {
+        playBgMusic();
+        musicStarted = true;
+      }
+
       const rect = canvas.getBoundingClientRect();
       const scale = canvas.width / rect.width;
       const mx = (e.clientX - rect.left) * scale;
@@ -392,6 +407,9 @@
         placePiece(row, col);
       }
     }
+
+    // 初始化音频对象
+    initAudio();
 
     canvas.addEventListener('click', handleCanvasClick);
     restartBtn.addEventListener('click', () => initBoard());
