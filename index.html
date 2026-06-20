@@ -20,6 +20,18 @@
   <link rel="stylesheet" href="music-player.css">
   <script src="music-player.js"></script>
 
+  <!-- ===== 强制横屏（新增） ===== -->
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      // 强制横屏（普通浏览器访问时生效）
+      if (screen.orientation && screen.orientation.lock) {
+        screen.orientation.lock('landscape').catch(function(e) {
+          console.log('横屏锁定失败（可能已在横屏或权限不足）:', e);
+        });
+      }
+    });
+  </script>
+
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Noto Serif SC', '楷体', 'KaiTi', serif; }
     body {
@@ -528,8 +540,6 @@
       </div>
       <div class="setting-check"></div>
     </div>
-
-    <!-- ===== 这里已删除旧的背景音乐控制区块 ===== -->
 
     <button class="modal-close-btn" onclick="closeSettings()">确定</button>
   </div>

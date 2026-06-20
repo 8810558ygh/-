@@ -37,7 +37,6 @@
     .lobby-voice-bar {
       margin: 12px 0 20px;
     }
-    /* 音量指示器微调 */
     .volume-indicator {
       display: flex;
       align-items: flex-end;
@@ -100,7 +99,6 @@
 <div id="lobbyScreen" class="hidden">
   <div class="lobby-mode-bar" id="lobbyModeBar">🎮 当前模式：业余模式</div>
 
-  <!-- ===== 大厅语音控制栏 ===== -->
   <div class="voice-control-bar lobby-voice-bar">
     <button class="voice-btn mic-btn inactive-mic" onclick="toggleMic()">
       <span>🎤</span>
@@ -170,7 +168,6 @@
         <div id="winnerMessage"></div>
       </div>
 
-      <!-- ===== 游戏语音控制栏 ===== -->
       <div class="voice-control-bar">
         <button class="voice-btn mic-btn inactive-mic" onclick="toggleMic()">
           <span>🎤</span>
@@ -207,11 +204,7 @@
 </div>
 
 <script>
-  // ========== 麦克风增益倍数（可调节） ==========
-  const MIC_GAIN = 2.5;   // 1.0 为原始音量，2.5 为放大 2.5 倍
-
-  // ========== 音频触发标志 ==========
-  let musicStarted = false;
+  const MIC_GAIN = 2.5;
 
   // ===================== Supabase 战绩配置 =====================
   const SUPABASE_URL = 'https://txgemtxikpieaqcohglr.supabase.co';
@@ -698,12 +691,12 @@
     window.location.href = 'index.html';
   }
 
-  // ========== 语音功能（带麦克风增益） ==========
+  // ========== 语音功能 ==========
   let _isMicOn = false;
   let _isSpeakerOn = false;
-  let _localStream = null;      // 原始流（未经增益）
-  let _processedStream = null;  // 经过增益后的流（用于发送）
-  window._localStream = _localStream;   // 注意：发送用的是 _processedStream
+  let _localStream = null;
+  let _processedStream = null;
+  window._localStream = _localStream;
   window._isMicOn = _isMicOn;
   window._isSpeakerOn = _isSpeakerOn;
 
@@ -769,7 +762,6 @@
         });
         console.log('✅ 原始麦克风流已获取');
 
-        // ---- 创建 AudioContext 并处理增益 ----
         if (!audioContext) {
           audioContext = new (window.AudioContext || window.webkitAudioContext)();
           analyser = audioContext.createAnalyser();
@@ -781,25 +773,17 @@
           console.log('✅ AudioContext 已恢复');
         }
 
-        // 创建来源节点
         const source = audioContext.createMediaStreamSource(rawStream);
-        // 创建增益节点
         gainNode = audioContext.createGain();
-        gainNode.gain.value = MIC_GAIN;   // 设置增益倍数
-        // 创建目标节点（用于输出处理后的流）
+        gainNode.gain.value = MIC_GAIN;
         destNode = audioContext.createMediaStreamDestination();
-        // 连接：原始流 -> 增益 -> 分析器 + 输出
         source.connect(gainNode);
-        gainNode.connect(analyser);       // 分析器读取放大后的信号，用于音量指示器
-        gainNode.connect(destNode);       // 输出放大后的流
+        gainNode.connect(analyser);
+        gainNode.connect(destNode);
 
-        // 保存节点引用以便后续断开
         audioSourceNode = source;
-        // 将处理后的流赋值给发送流
         _processedStream = destNode.stream;
-        window._localStream = _processedStream;   // 发送使用放大后的流
-
-        // 同时保存原始流以便停止时释放
+        window._localStream = _processedStream;
         _localStream = rawStream;
 
         _isMicOn = true;
@@ -807,7 +791,6 @@
 
         updateMicButtons(true);
 
-        // 启动音量检测（分析器已连接，直接使用即可）
         if (animationId) cancelAnimationFrame(animationId);
         function detect() {
           if (!_isMicOn) {
@@ -835,7 +818,6 @@
         showToast(`🎤 麦克风已开启（音量放大 ${MIC_GAIN} 倍）`);
         console.log(`✅ 麦克风增益已应用: ${MIC_GAIN}x，发送流有效`);
 
-        // 向所有已连接的对端发起音频呼叫
         const peers = Array.from(window.GAME.connections.keys());
         console.log('📞 向', peers.length, '个对端发起音频呼叫');
         for (let peerId of peers) {
@@ -857,7 +839,6 @@
         animationId = null;
       }
 
-      // 断开音频节点
       if (audioSourceNode) {
         try { audioSourceNode.disconnect(); } catch(e) {}
         audioSourceNode = null;
@@ -871,7 +852,6 @@
         destNode = null;
       }
 
-      // 停止并释放原始流
       if (_localStream) {
         _localStream.getTracks().forEach(t => t.stop());
         _localStream = null;
@@ -882,7 +862,6 @@
       }
       window._localStream = null;
 
-      // 关闭所有音频呼叫和远端元素
       if (window._audioCalls) {
         for (let [peerId, call] of window._audioCalls) {
           try { call.close(); } catch(e) {}
@@ -978,9 +957,8 @@
   window.toggleSpeaker = toggleSpeaker;
   window.stopAllAudio = stopAllAudio;
 
-  // ========== 事件绑定 ==========
+  // ========== 事件绑定（已移除 playBgMusic 调用） ==========
   document.getElementById('createRoomBtn').onclick = () => {
-    playBgMusic();
     P2PNetwork.createRoom({
       state: window.GAME,
       myNick: myNick,
@@ -999,7 +977,6 @@
   document.getElementById('confirmJoinBtn').onclick = () => {
     let code = document.getElementById('joinRoomCodeInput').value.trim().toUpperCase();
     if (code) {
-      playBgMusic();
       P2PNetwork.joinRoom({
         state: window.GAME,
         myNick: myNick,
@@ -1012,11 +989,6 @@
   };
 
   canvas.addEventListener('click', (e) => {
-    if (!musicStarted) {
-      playBgMusic();
-      musicStarted = true;
-    }
-
     if (!window.GAME.gameStarted || window.GAME.gameOver) return;
     let rect = canvas.getBoundingClientRect();
     let scale = canvas.width / rect.width;

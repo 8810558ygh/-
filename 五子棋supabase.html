@@ -12,7 +12,6 @@
   <script src="online-core.js"></script>
   <script src="online-supabase.js"></script>
   <script src="audio.js"></script>
-  <!-- 音乐播放器 -->
   <link rel="stylesheet" href="music-player.css">
   <script src="music-player.js"></script>
   <base target="_blank">
@@ -137,9 +136,6 @@
 </div>
 
 <script>
-  // ========== 音频触发标志 ==========
-  let musicStarted = false;
-
   // ==================== 配置与用户信息 ====================
   const urlParams = new URLSearchParams(window.location.search);
   let gameMode = urlParams.get('mode') || 'casual';
@@ -493,9 +489,8 @@
     window.location.href = 'index.html';
   }
 
-  // ========== 事件绑定 ==========
+  // ========== 事件绑定（已移除 playBgMusic 调用） ==========
   document.getElementById('createRoomBtn').onclick = () => {
-    playBgMusic();
     const context = buildContext();
     SupabaseNetwork.createRoom(context);
   };
@@ -508,18 +503,12 @@
   document.getElementById('confirmJoinBtn').onclick = () => {
     let code = document.getElementById('joinRoomCodeInput').value.trim().toUpperCase();
     if (code) {
-      playBgMusic();
       const context = buildContext();
       SupabaseNetwork.joinRoom(context, code);
     } else showToast('输入房间码');
   };
 
   canvas.addEventListener('click', (e) => {
-    if (!musicStarted) {
-      playBgMusic();
-      musicStarted = true;
-    }
-
     if (!window.GAME.gameStarted || window.GAME.gameOver) return;
     let rect = canvas.getBoundingClientRect();
     let scale = canvas.width / rect.width;

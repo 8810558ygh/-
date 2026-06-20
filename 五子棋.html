@@ -7,26 +7,21 @@
   <link rel="stylesheet" href="style.css">
   <script src="goban.js"></script>
   <script src="rules.js"></script>
-  <!-- 音频控制 -->
   <script src="audio.js"></script>
-  <!-- 音乐播放器 -->
   <link rel="stylesheet" href="music-player.css">
   <script src="music-player.js"></script>
   <style>
-    /* 仅对本页面微调：增大棋盘、下移布局 */
     .game-container-local {
-      padding-top: 80px;          /* 整体下移，避开顶栏 */
+      padding-top: 80px;
     }
     .board-wrap {
-      max-width: 820px;           /* 适配更大的画布 */
+      max-width: 820px;
     }
-    /* 调整棋子示例大小（UI上的小圆点） */
     .piece-sample {
       width: 32px;
       height: 32px;
     }
 
-    /* 顶栏样式（与其他页面保持一致） */
     .top-bar {
       position: fixed; top: 0; left: 0; right: 0; height: 60px;
       background: rgba(25, 18, 10, 0.85);
@@ -69,7 +64,6 @@
 </head>
 <body>
 
-<!-- 顶栏 -->
 <div class="top-bar">
   <div class="logo">⚫ 东南五子 · 弈 ⚪</div>
   <div class="top-right">
@@ -84,7 +78,6 @@
 </div>
 
 <div class="game-container-local">
-  <!-- 模式标签 -->
   <div class="mode-tag" id="modeTag">🎋 业余模式</div>
 
   <div class="board-wrap">
@@ -108,12 +101,10 @@
 </div>
 
 <script>
-  // ========== 全局返回函数（确保按钮可用） ==========
   window.goToHall = function() {
     window.location.href = 'index.html';
   };
 
-  // ========== 游戏主逻辑 ==========
   (function() {
     const urlParams = new URLSearchParams(window.location.search);
     const gameMode = urlParams.get('mode') || 'casual';
@@ -150,9 +141,6 @@
     let moveHistory = [];
     let winLines = [];
     let forbiddenLines = [];
-
-    // ===== 音频：首次点击棋盘触发播放 =====
-    let musicStarted = false;
 
     function initBoard() {
       board = Rules.initBoard(BOARD_SIZE);
@@ -195,7 +183,6 @@
       }
     }
 
-    // ---------- 绘制 ----------
     function drawBoard(drawLastMark) {
       if (drawLastMark === undefined) drawLastMark = !isProMode;
       const lastMove = moveHistory.length > 0 ? moveHistory[moveHistory.length - 1] : null;
@@ -239,7 +226,6 @@
       requestAnimationFrame(frame);
     }
 
-    // ---------- 游戏结束 ----------
     function endGame(winningPlayer, reason) {
       gameOver = true;
       winner = winningPlayer;
@@ -322,7 +308,6 @@
       document.getElementById('gameEndOverlay').classList.remove('show');
     }
 
-    // ---------- 落子 ----------
     function placePiece(row, col) {
       if (gameOver) {
         alert('对局已结束，请开启新的一局。');
@@ -370,7 +355,6 @@
       return true;
     }
 
-    // ---------- 悔棋 ----------
     function undoMove() {
       if (gameOver) {
         alert('对局已结束，无法悔棋。请重新开始。');
@@ -387,15 +371,9 @@
       drawBoard();
     }
 
-    // ---------- 事件绑定 ----------
+    // 已删除 musicStarted 变量和自动播放逻辑
     function handleCanvasClick(e) {
       if (gameOver) return;
-
-      // 首次点击棋盘触发音乐
-      if (!musicStarted) {
-        playBgMusic();
-        musicStarted = true;
-      }
 
       const rect = canvas.getBoundingClientRect();
       const scale = canvas.width / rect.width;
@@ -408,7 +386,6 @@
       }
     }
 
-    // 初始化音频对象
     initAudio();
 
     canvas.addEventListener('click', handleCanvasClick);

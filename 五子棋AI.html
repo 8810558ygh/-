@@ -9,9 +9,7 @@
   <script src="rules.js"></script>
   <script src="ai.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.min.js"></script>
-  <!-- 音频控制 -->
   <script src="audio.js"></script>
-  <!-- 音乐播放器 -->
   <link rel="stylesheet" href="music-player.css">
   <script src="music-player.js"></script>
   <style>
@@ -19,7 +17,6 @@
     .board-wrap { max-width: 820px; }
     .turn-reminder { font-size: 2.0rem; padding: 12px 24px; }
 
-    /* 顶栏样式（统一） */
     .top-bar {
       position: fixed; top: 0; left: 0; right: 0; height: 60px;
       background: rgba(25, 18, 10, 0.85);
@@ -60,7 +57,6 @@
       #gameScreen { padding-top: 70px; }
     }
 
-    /* 设置界面调整，加上顶栏后整体下移 */
     #setupScreen {
       padding-top: 80px;
       min-height: 100vh;
@@ -74,9 +70,7 @@
 
 <div id="toast" class="toast"></div>
 
-<!-- ===== 设置界面 ===== -->
 <div id="setupScreen">
-  <!-- 顶栏 -->
   <div class="top-bar">
     <div class="logo">⚫ 东南五子·人机对弈 ⚪</div>
     <div class="top-right">
@@ -111,7 +105,6 @@
   <button class="start-btn" onclick="startGame()" id="startBtn">🎮 开始对战</button>
 </div>
 
-<!-- ===== 游戏界面 ===== -->
 <div id="gameScreen" class="hidden">
   <div class="top-bar">
     <div class="logo">⚫ 东南五子·人机对弈 ⚪</div>
@@ -154,12 +147,10 @@
 </div>
 
 <script>
-  // ========== 全局返回大厅函数 ==========
   window.goToHall = function() {
     window.location.href = 'index.html';
   };
 
-  // 初始化音频（页面加载时，但暂不播放）
   initAudio();
 
   // ===================== Supabase 战绩配置 =====================
@@ -411,9 +402,7 @@
   }
 
   function startGame() {
-    // 用户点击“开始对战”触发音乐播放
-    playBgMusic();
-
+    // 已删除 playBgMusic()
     playerIsBlack = selectedPlayerColor === 1;
     document.getElementById('setupScreen').classList.add('hidden');
     document.getElementById('gameScreen').classList.remove('hidden');
