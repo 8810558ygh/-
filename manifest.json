@@ -3,7 +3,7 @@
   "short_name": "五子棋",
   "description": "东南五子棋 · 以棋会友，纵横经纬",
   "start_url": "./index.html",
-  "display": "standalone",
+  "display": "fullscreen",
   "orientation": "landscape",
   "background_color": "#2b1e0f",
   "theme_color": "#e9bc6e",

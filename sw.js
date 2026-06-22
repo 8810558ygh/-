@@ -1,6 +1,6 @@
 // sw.js —— Service Worker 离线缓存（优化版）
 // 核心缓存版本
-const CORE_CACHE = 'gomoku-core-v5';
+const CORE_CACHE = 'gomoku-core-v6';
 // 音频缓存版本（独立，不随核心更新）
 const AUDIO_CACHE = 'gomoku-audio-v1';
 
