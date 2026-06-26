@@ -75,6 +75,19 @@
     .personal-btn:hover, .settings-btn:hover {
       background: rgba(200, 160, 100, 0.35);
     }
+    .conn-mode-badge {
+      font-family: monospace;
+      background: #2a2013;
+      padding: 4px 10px;
+      border-radius: 32px;
+      letter-spacing: 1px;
+      border: 1px solid #bd9a60;
+      font-size: 0.7rem;
+      color: #e9bc6e;
+      white-space: nowrap;
+    }
+    .conn-mode-badge.p2p { border-color: #e0816b; color: #e0816b; }
+    .conn-mode-badge.supa { border-color: #6c9fd1; color: #6c9fd1; }
 
     /* 登录页 */
     #loginScreen {
@@ -364,6 +377,7 @@
       .top-bar { height: 50px; padding: 0 10px; }
       .logo { font-size: 0.9rem; letter-spacing: 1px; }
       .personal-btn, .settings-btn { padding: 3px 8px; font-size: 0.7rem; }
+      .conn-mode-badge { padding: 3px 6px; font-size: 0.6rem; }
       .login-card { padding: 24px 16px; border-radius: 32px; }
       .login-title { font-size: 1.6rem; }
       .login-subtitle { font-size: 0.85rem; margin-bottom: 18px; }
@@ -391,6 +405,7 @@
       .mode-card { flex: 1 1 100%; max-width: 100%; min-width: unset; }
       .logo { font-size: 0.75rem; }
       .personal-btn, .settings-btn { font-size: 0.6rem; padding: 2px 6px; }
+      .conn-mode-badge { font-size: 0.5rem; padding: 2px 4px; }
       .login-title { font-size: 1.3rem; }
       .hall-title { font-size: 1.5rem; }
     }
@@ -445,6 +460,7 @@
       <div class="personal-btn" id="personalCenterBtn" onclick="openProfile()">🧑 个人中心</div>
     </div>
     <div class="top-right">
+      <div class="conn-mode-badge" id="connModeBadge">☁️ Supabase云端</div>
       <div class="settings-btn" onclick="openSettings()">⚙️ 设置</div>
     </div>
   </div>
@@ -481,7 +497,22 @@
   <div class="modal-content">
     <div class="modal-title">⚙️ 游戏设置</div>
 
-    <!-- 游戏模式分组（已删除联机方式分组） -->
+    <div class="setting-group-title">联机方式</div>
+    <div class="setting-option" id="optSupa" onclick="selectMode('supabase')">
+      <div class="setting-option-left">
+        <div class="setting-option-name">☁️ Supabase 云端联机</div>
+        <div class="setting-option-desc">通过服务器中转，跨网络稳定连接</div>
+      </div>
+      <div class="setting-check"></div>
+    </div>
+    <div class="setting-option" id="optP2P" onclick="selectMode('p2p')">
+      <div class="setting-option-left">
+        <div class="setting-option-name">🔗 P2P 直连</div>
+        <div class="setting-option-desc">点对点连接，低延迟但需同网络</div>
+      </div>
+      <div class="setting-check"></div>
+    </div>
+
     <div class="setting-group-title">游戏模式</div>
     <div class="setting-option" id="optCasual" onclick="selectGameMode('casual')">
       <div class="setting-option-left">
@@ -497,6 +528,8 @@
       </div>
       <div class="setting-check"></div>
     </div>
+
+    <!-- ===== 这里已删除旧的背景音乐控制区块 ===== -->
 
     <button class="modal-close-btn" onclick="closeSettings()">确定</button>
   </div>
@@ -523,6 +556,7 @@
   let supabase = null;
   let currentUser = null;
   let myNick = localStorage.getItem('gonick') || ('游客' + Math.floor(Math.random() * 900 + 100));
+  let connMode = localStorage.getItem('connMode') || 'supabase';
   let gameMode = localStorage.getItem('gameMode') || 'casual';
 
   // 确保游客有唯一ID，用于战绩存储
@@ -641,6 +675,7 @@
   function showHallScreen() {
     document.getElementById('loginScreen').classList.add('hidden');
     document.getElementById('hallScreen').classList.remove('hidden');
+    updateConnBadge();
 
     let pBtn = document.getElementById('personalCenterBtn');
     pBtn.innerText = '🧑 ' + myNick;
@@ -652,6 +687,17 @@
     }
   }
 
+  function updateConnBadge() {
+    let badge = document.getElementById('connModeBadge');
+    if (connMode === 'p2p') {
+      badge.innerText = '🔗 P2P直连';
+      badge.className = 'conn-mode-badge p2p';
+    } else {
+      badge.innerText = '☁️ Supabase云端';
+      badge.className = 'conn-mode-badge supa';
+    }
+  }
+
   function openSettings() {
     document.getElementById('settingsModal').classList.add('show');
     updateSettingsUI();
@@ -660,8 +706,17 @@
     document.getElementById('settingsModal').classList.remove('show');
   }
   function updateSettingsUI() {
+    document.getElementById('optSupa').classList.toggle('selected', connMode === 'supabase');
+    document.getElementById('optP2P').classList.toggle('selected', connMode === 'p2p');
     document.getElementById('optCasual').classList.toggle('selected', gameMode === 'casual');
     document.getElementById('optPro').classList.toggle('selected', gameMode === 'pro');
+  }
+  function selectMode(mode) {
+    connMode = mode;
+    localStorage.setItem('connMode', connMode);
+    updateSettingsUI();
+    updateConnBadge();
+    showToast('已切换为 ' + (mode === 'p2p' ? 'P2P直连' : 'Supabase云端'));
   }
   function selectGameMode(mode) {
     gameMode = mode;
@@ -726,8 +781,9 @@
       params.set('uid', currentUser.id);
       params.set('email', currentUser.email);
     }
-    // 直接跳转到混合模式联机页面
-    window.location.href = '五子棋supabase.html?' + params.toString();
+
+    let targetPage = connMode === 'p2p' ? '五子棋P2P.html' : '五子棋supabase.html';
+    window.location.href = targetPage + '?' + params.toString();
   }
 
   function showToast(msg) {
@@ -757,6 +813,9 @@
         });
     });
   }
+
+  // ===== 音频控件初始化（删除旧UI初始化，现在由music-player.js自动处理） =====
+  // 不再需要手动更新旧UI
 </script>
 </body>
 </html>

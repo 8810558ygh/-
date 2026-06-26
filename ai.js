@@ -1,288 +1,319 @@
-// ai.js —— 五子棋 AI 引擎（引用 rules.js）
+// ai.js —— 模仿有经验的棋手（聪明人风格）
 // 依赖：rules.js 必须先行加载
 (function(global) {
     const BOARD_SIZE = 15;
 
-    const SCORE = {
-        FIVE: 100000000,
-        FOUR: 10000000,
-        BLOCKED_FOUR: 1000000,
-        THREE: 100000,
-        BLOCKED_THREE: 10000,
-        TWO: 1000,
-        BLOCKED_TWO: 100,
-        ONE: 10
-    };
+    // ==================== 增强评分 ====================
+    // 识别特殊棋形：跳活三（如 X_XXX）、跳冲四等
+    function detectSpecialPatterns(row, col, board, player) {
+        const directions = [[1,0], [0,1], [1,1], [1,-1]];
+        let bonus = 0;
 
-    // ----- 评分函数（内部使用） -----
-    function scoreWindow(window, player) {
-        let count = window.filter(v => v === player).length;
-        let empty = window.filter(v => v === 0).length;
-        let opponent = player === 1 ? 2 : 1;
-        let blocked = window.filter(v => v === opponent).length;
-
-        if (count === 5) return SCORE.FIVE;
-        if (count === 4 && empty === 1) return SCORE.FOUR;
-        if (count === 4 && blocked === 1) return SCORE.BLOCKED_FOUR;
-        if (count === 3 && empty === 2) return SCORE.THREE;
-        if (count === 3 && empty === 1 && blocked === 1) return SCORE.BLOCKED_THREE;
-        if (count === 2 && empty === 3) return SCORE.TWO;
-        if (count === 2 && empty === 2 && blocked === 1) return SCORE.BLOCKED_TWO;
-        return 0;
-    }
-
-    function evaluateBoardState(boardState) {
-        let blackScore = 0, whiteScore = 0;
-        for (let r = 0; r < BOARD_SIZE; r++) {
-            for (let c = 0; c <= BOARD_SIZE - 5; c++) {
-                let window = [];
-                for (let i = 0; i < 5; i++) window.push(boardState[r][c+i]);
-                blackScore += scoreWindow(window, 1);
-                whiteScore += scoreWindow(window, 2);
-            }
-        }
-        for (let c = 0; c < BOARD_SIZE; c++) {
-            for (let r = 0; r <= BOARD_SIZE - 5; r++) {
-                let window = [];
-                for (let i = 0; i < 5; i++) window.push(boardState[r+i][c]);
-                blackScore += scoreWindow(window, 1);
-                whiteScore += scoreWindow(window, 2);
-            }
-        }
-        for (let r = 0; r <= BOARD_SIZE - 5; r++) {
-            for (let c = 0; c <= BOARD_SIZE - 5; c++) {
-                let window1 = [], window2 = [];
-                for (let i = 0; i < 5; i++) {
-                    window1.push(boardState[r+i][c+i]);
-                    window2.push(boardState[r+i][c+4-i]);
+        for (let d of directions) {
+            let cells = [];
+            for (let step = -4; step <= 4; step++) {
+                let r = row + d[0] * step;
+                let c = col + d[1] * step;
+                if (r < 0 || r >= BOARD_SIZE || c < 0 || c >= BOARD_SIZE) {
+                    cells.push(-1);
+                } else {
+                    cells.push(board[r][c]);
                 }
-                blackScore += scoreWindow(window1, 1); whiteScore += scoreWindow(window1, 2);
-                blackScore += scoreWindow(window2, 1); whiteScore += scoreWindow(window2, 2);
+            }
+            // 模拟落子
+            cells[4] = player;
+            // 检测跳活三：形如 X_XXX（中间隔一个空位）
+            let s = cells.join('');
+            // 查找模式：玩家棋子 + 0 + 玩家棋子*3 或 玩家棋子*3 + 0 + 玩家棋子
+            let p = player === 1 ? '1' : '2';
+            let pattern = new RegExp(`${p}0${p}{3}|${p}{3}0${p}`);
+            if (pattern.test(s)) {
+                bonus += 3000;
+            }
+            // 检测跳冲四：X_XXXX 或 XXXX_X
+            let pattern4 = new RegExp(`${p}0${p}{4}|${p}{4}0${p}`);
+            if (pattern4.test(s)) {
+                bonus += 8000;
             }
         }
-        return whiteScore - blackScore;
+        return bonus;
     }
 
-    // ----- 辅助函数（使用 Rules 提供的基础方法） -----
-    function hasNeighbor(r, c, dist, boardState) {
-        for (let i = -dist; i <= dist; i++) {
-            for (let j = -dist; j <= dist; j++) {
-                if (i === 0 && j === 0) continue;
-                let nr = r + i, nc = c + j;
-                if (nr >= 0 && nr < BOARD_SIZE && nc >= 0 && nc < BOARD_SIZE && boardState[nr][nc] !== 0) return true;
+    // 评估落子价值（进攻 + 防守 + 特殊加成）
+    function evaluatePoint(row, col, board, player) {
+        if (board[row][col] !== 0) return 0;
+
+        const directions = [[1,0], [0,1], [1,1], [1,-1]];
+        let attackScore = 0;
+        let defenseScore = 0;
+
+        for (let d of directions) {
+            // 进攻线（假设下 player）
+            let attackCount = 1;
+            let attackOpenEnds = 0;
+            for (let step = 1; step < 5; step++) {
+                let r = row + d[0] * step;
+                let c = col + d[1] * step;
+                if (r < 0 || r >= BOARD_SIZE || c < 0 || c >= BOARD_SIZE) break;
+                if (board[r][c] === player) attackCount++;
+                else if (board[r][c] === 0) { attackOpenEnds++; break; }
+                else break;
+            }
+            for (let step = 1; step < 5; step++) {
+                let r = row - d[0] * step;
+                let c = col - d[1] * step;
+                if (r < 0 || r >= BOARD_SIZE || c < 0 || c >= BOARD_SIZE) break;
+                if (board[r][c] === player) attackCount++;
+                else if (board[r][c] === 0) { attackOpenEnds++; break; }
+                else break;
+            }
+
+            // 防守线（假设下 opponent）
+            let opponent = player === 1 ? 2 : 1;
+            let defCount = 1;
+            let defOpenEnds = 0;
+            for (let step = 1; step < 5; step++) {
+                let r = row + d[0] * step;
+                let c = col + d[1] * step;
+                if (r < 0 || r >= BOARD_SIZE || c < 0 || c >= BOARD_SIZE) break;
+                if (board[r][c] === opponent) defCount++;
+                else if (board[r][c] === 0) { defOpenEnds++; break; }
+                else break;
+            }
+            for (let step = 1; step < 5; step++) {
+                let r = row - d[0] * step;
+                let c = col - d[1] * step;
+                if (r < 0 || r >= BOARD_SIZE || c < 0 || c >= BOARD_SIZE) break;
+                if (board[r][c] === opponent) defCount++;
+                else if (board[r][c] === 0) { defOpenEnds++; break; }
+                else break;
+            }
+
+            // 进攻打分
+            if (attackCount >= 5) attackScore += 100000;
+            else if (attackCount === 4 && attackOpenEnds >= 1) attackScore += 8000;
+            else if (attackCount === 4) attackScore += 1500;
+            else if (attackCount === 3 && attackOpenEnds >= 2) attackScore += 1200;
+            else if (attackCount === 3 && attackOpenEnds >= 1) attackScore += 300;
+            else if (attackCount === 2 && attackOpenEnds >= 2) attackScore += 80;
+            else if (attackCount === 2) attackScore += 15;
+
+            // 防守打分
+            if (defCount >= 5) defenseScore += 100000;
+            else if (defCount === 4 && defOpenEnds >= 1) defenseScore += 8000;
+            else if (defCount === 4) defenseScore += 1500;
+            else if (defCount === 3 && defOpenEnds >= 2) defenseScore += 1200;
+            else if (defCount === 3 && defOpenEnds >= 1) defenseScore += 300;
+            else if (defCount === 2 && defOpenEnds >= 2) defenseScore += 80;
+            else if (defCount === 2) defenseScore += 15;
+        }
+
+        // 特殊棋形加成
+        let specialBonus = detectSpecialPatterns(row, col, board, player);
+
+        // 综合得分：进攻权重稍高，但防守也很重要
+        let total = attackScore * 1.2 + defenseScore * 1.0 + specialBonus;
+        return total;
+    }
+
+    // ==================== 两步威胁预判 ====================
+    // 检查如果自己下了某点，对手下一步能否形成五子（必须防）
+    function opponentCanWinNext(board, row, col, opponent) {
+        // 模拟落子后，检测对手是否有一步获胜点
+        board[row][col] = 0; // 先恢复（因为调用时棋盘可能已模拟）
+        // 检测对手所有空位是否有一步胜
+        for (let r = 0; r < BOARD_SIZE; r++) {
+            for (let c = 0; c < BOARD_SIZE; c++) {
+                if (board[r][c] !== 0) continue;
+                board[r][c] = opponent;
+                if (Rules.quickCheckWin(board, opponent, BOARD_SIZE)) {
+                    board[r][c] = 0;
+                    return true;
+                }
+                board[r][c] = 0;
             }
         }
         return false;
     }
 
-    function evaluatePosition(row, col, player, boardState) {
-        if (boardState[row][col] !== 0) return -Infinity;
-        let total = 0;
-        const directions = [[1,0],[0,1],[1,1],[1,-1]];
-        for (let [dx, dy] of directions) {
-            let line = [];
-            for (let i = -4; i <= 4; i++) {
-                let r = row + dx * i, c = col + dy * i;
-                line.push((r < 0 || r >= BOARD_SIZE || c < 0 || c >= BOARD_SIZE) ? 2 : boardState[r][c]);
-            }
-            let sim = line.slice();
-            sim[4] = player;
-            for (let start = 0; start <= 4; start++) {
-                let window = sim.slice(start, start + 5);
-                total += scoreWindow(window, player);
-            }
-        }
-        return total;
-    }
-
-    function countThreats(boardState, player) {
-        let threats = 0;
-        const directions = [[1,0],[0,1],[1,1],[1,-1]];
-        for (let r = 0; r < BOARD_SIZE; r++) {
-            for (let c = 0; c < BOARD_SIZE; c++) {
-                if (boardState[r][c] !== player) continue;
-                for (let [dx, dy] of directions) {
-                    let count = 1, emptyEnds = 0;
-                    for (let step = 1; step < 5; step++) {
-                        let nr = r + dx * step, nc = c + dy * step;
-                        if (nr < 0 || nr >= BOARD_SIZE || nc < 0 || nc >= BOARD_SIZE) break;
-                        if (boardState[nr][nc] === player) count++;
-                        else if (boardState[nr][nc] === 0) { emptyEnds++; break; }
-                        else break;
-                    }
-                    for (let step = 1; step < 5; step++) {
-                        let nr = r - dx * step, nc = c - dy * step;
-                        if (nr < 0 || nr >= BOARD_SIZE || nc < 0 || nc >= BOARD_SIZE) break;
-                        if (boardState[nr][nc] === player) count++;
-                        else if (boardState[nr][nc] === 0) { emptyEnds++; break; }
-                        else break;
-                    }
-                    if (count === 4 && emptyEnds >= 1) threats++;
+    // ==================== 候选点生成（增强版） ====================
+    function hasNeighbor(board, row, col, dist) {
+        for (let i = -dist; i <= dist; i++) {
+            for (let j = -dist; j <= dist; j++) {
+                if (i === 0 && j === 0) continue;
+                let r = row + i;
+                let c = col + j;
+                if (r >= 0 && r < BOARD_SIZE && c >= 0 && c < BOARD_SIZE && board[r][c] !== 0) {
+                    return true;
                 }
             }
         }
-        return threats;
+        return false;
     }
 
-    function getCandidates(boardState, topN, aiPlayer, isProMode, scoreModifier) {
-        let list = [];
+    function getCandidates(board, player, isProMode) {
+        let candidates = [];
+        const opponent = player === 1 ? 2 : 1;
+
         for (let r = 0; r < BOARD_SIZE; r++) {
             for (let c = 0; c < BOARD_SIZE; c++) {
-                if (boardState[r][c] !== 0) continue;
-                if (!hasNeighbor(r, c, 2, boardState)) continue;
+                if (board[r][c] !== 0) continue;
+                if (!hasNeighbor(board, r, c, 2)) continue;
 
-                // 专业模式：排除黑棋禁手点
-                if (isProMode && aiPlayer === 1) {
-                    boardState[r][c] = 1;
-                    let forbidden = Rules.checkForbidden(r, c, boardState, BOARD_SIZE);
-                    boardState[r][c] = 0;
+                // 专业模式禁手（黑棋）
+                if (isProMode && player === 1) {
+                    board[r][c] = 1;
+                    let forbidden = Rules.checkForbidden(r, c, board, BOARD_SIZE);
+                    board[r][c] = 0;
                     if (forbidden.sanSan || forbidden.siSi || forbidden.overline) continue;
                 }
 
-                let attack = evaluatePosition(r, c, aiPlayer, boardState);
-                let defense = evaluatePosition(r, c, aiPlayer === 1 ? 2 : 1, boardState);
-                let score = attack + defense;
+                // 基础进攻防守分
+                let attack = evaluatePoint(r, c, board, player);
+                let defense = evaluatePoint(r, c, board, opponent);
 
-                if (typeof scoreModifier === 'function') {
-                    score = scoreModifier(score, r, c);
+                // 两步威胁预判：如果下这里，对手下一步能否直接获胜？如果可以，则降低该点分数
+                let danger = 0;
+                if (defense < 5000) { // 如果防守分不高，说明可能忽略了对对手的防御
+                    // 模拟下子后检测
+                    board[r][c] = player;
+                    if (opponentCanWinNext(board, r, c, opponent)) {
+                        danger = -3000; // 严重扣分
+                    }
+                    board[r][c] = 0;
                 }
 
-                let centerBonus = 0;
-                let distToCenter = Math.abs(r - 7) + Math.abs(c - 7);
-                if (distToCenter <= 3) centerBonus = (4 - distToCenter) * 50;
+                // 双收益评估：这个点是否同时能进攻和防守？
+                let doubleBenefit = 0;
+                if (attack > 800 && defense > 800) {
+                    doubleBenefit = 2000; // 很好的点
+                } else if (attack > 500 && defense > 500) {
+                    doubleBenefit = 1000;
+                }
 
-                list.push({r, c, score: score + centerBonus});
+                // 中心偏好（聪明人会注重控制中心）
+                let centerDist = Math.abs(r - 7) + Math.abs(c - 7);
+                let centerBonus = Math.max(0, (7 - centerDist) * 8);
+
+                // 星位偏好（角星或边星）
+                let starBonus = 0;
+                const stars = [[3,3],[3,7],[3,11],[7,3],[7,11],[11,3],[11,7],[11,11]];
+                for (let s of stars) {
+                    if (r === s[0] && c === s[1]) {
+                        starBonus = 300;
+                        break;
+                    }
+                }
+
+                let score = attack * 1.2 + defense + doubleBenefit + centerBonus + starBonus + danger;
+
+                candidates.push({ row: r, col: c, score: score, attack: attack, defense: defense });
             }
         }
-        if (list.length === 0) return [{r: 7, c: 7, score: 0}];
-        list.sort((a, b) => b.score - a.score);
-        return list.slice(0, topN);
+
+        candidates.sort((a, b) => b.score - a.score);
+        // 取前15个作为候选
+        return candidates.slice(0, 15);
     }
 
-    function minimax(boardState, depth, alpha, beta, isMaximizing, maxDepth, aiPlayer, isProMode, scoreModifier) {
-        // 使用 Rules.quickCheckWin
-        if (Rules.quickCheckWin(boardState, aiPlayer, BOARD_SIZE)) return 10000000 + depth * 100;
-        if (Rules.quickCheckWin(boardState, aiPlayer === 1 ? 2 : 1, BOARD_SIZE)) return -10000000 - depth * 100;
-        if (depth === 0) return evaluateBoardState(boardState);
-
-        const candidateCount = isMaximizing ? 16 : 10;
-        let candidates = getCandidates(boardState, candidateCount, aiPlayer, isProMode, scoreModifier);
-
-        if (isMaximizing) {
-            let maxEval = -Infinity;
-            for (let cand of candidates) {
-                boardState[cand.r][cand.c] = aiPlayer;
-                let evalScore = minimax(boardState, depth - 1, alpha, beta, false, maxDepth, aiPlayer, isProMode, scoreModifier);
-                boardState[cand.r][cand.c] = 0;
-                maxEval = Math.max(maxEval, evalScore);
-                alpha = Math.max(alpha, evalScore);
-                if (beta <= alpha) break;
-            }
-            return maxEval;
-        } else {
-            let minEval = Infinity;
-            for (let cand of candidates) {
-                boardState[cand.r][cand.c] = (aiPlayer === 1 ? 2 : 1);
-                let evalScore = minimax(boardState, depth - 1, alpha, beta, true, maxDepth, aiPlayer, isProMode, scoreModifier);
-                boardState[cand.r][cand.c] = 0;
-                minEval = Math.min(minEval, evalScore);
-                beta = Math.min(beta, evalScore);
-                if (beta <= alpha) break;
-            }
-            return minEval;
-        }
-    }
-
-    function findWinningMove(boardState, player) {
+    // ==================== 快速找一步必胜/必防 ====================
+    function findWinningMove(board, player) {
         for (let r = 0; r < BOARD_SIZE; r++) {
             for (let c = 0; c < BOARD_SIZE; c++) {
-                if (boardState[r][c] !== 0) continue;
-                boardState[r][c] = player;
-                let won = Rules.quickCheckWin(boardState, player, BOARD_SIZE);
-                boardState[r][c] = 0;
-                if (won) return {r, c};
+                if (board[r][c] !== 0) continue;
+                board[r][c] = player;
+                if (Rules.quickCheckWin(board, player, BOARD_SIZE)) {
+                    board[r][c] = 0;
+                    return { row: r, col: c };
+                }
+                board[r][c] = 0;
             }
         }
         return null;
     }
 
-    function findRushFour(boardState, player) {
-        let moves = [];
-        for (let r = 0; r < BOARD_SIZE; r++) {
-            for (let c = 0; c < BOARD_SIZE; c++) {
-                if (boardState[r][c] !== 0) continue;
-                boardState[r][c] = player;
-                let threats = countThreats(boardState, player);
-                boardState[r][c] = 0;
-                if (threats >= 2) moves.push({r, c, score: SCORE.FOUR * 2});
-            }
-        }
-        return moves;
-    }
-
-    function getOpeningMove(boardState, moveHistory, aiPlayer, playerIsBlack) {
-        let playerNum = playerIsBlack ? 1 : 2;
-        if (moveHistory.length === 0) return {r: 7, c: 7, score: 99999999};
+    // ==================== 开局处理 ====================
+    function getOpeningMove(board, moveHistory) {
+        if (moveHistory.length === 0) return { row: 7, col: 7 };
         if (moveHistory.length === 1) {
             let first = moveHistory[0];
-            if (first.row === 7 && first.col === 7) return {r: 7, c: 8, score: 99999999};
-            let symR = 14 - first.row, symC = 14 - first.col;
-            if (boardState[symR][symC] === 0) return {r: symR, c: symC, score: 99999999};
-            return {r: 7, c: 7, score: 99999999};
-        }
-        if (moveHistory.length === 2) {
-            let stars = [[3,3],[3,11],[11,3],[11,11],[7,3],[7,11],[3,7],[11,7]];
-            for (let [r, c] of stars) {
-                if (boardState[r][c] === 0) return {r, c, score: 99999999};
+            if (first.row === 7 && first.col === 7) {
+                // 优先选择星位或对称点
+                const choices = [[7,8], [8,7], [6,7], [7,6]];
+                for (let c of choices) {
+                    if (board[c[0]][c[1]] === 0) return { row: c[0], col: c[1] };
+                }
+                return { row: 7, col: 8 };
             }
+            // 对称落子
+            let symR = 14 - first.row;
+            let symC = 14 - first.col;
+            if (board[symR][symC] === 0) return { row: symR, col: symC };
+            // 如果对称点被占，选择附近星位
+            const stars = [[3,3],[3,7],[3,11],[7,3],[7,11],[11,3],[11,7],[11,11]];
+            for (let s of stars) {
+                if (board[s[0]][s[1]] === 0) return { row: s[0], col: s[1] };
+            }
+            return { row: 7, col: 7 };
         }
         return null;
     }
 
-    // ----- 对外接口 -----
+    // ==================== 主入口 ====================
     global.GomokuAI = {
         getMove: function(boardState, moveHistory, isProMode, playerIsBlack, scoreModifier) {
             const aiPlayer = playerIsBlack ? 2 : 1;
-            const playerNum = playerIsBlack ? 1 : 2;
+            const humanPlayer = playerIsBlack ? 1 : 2;
 
-            let opening = getOpeningMove(boardState, moveHistory, aiPlayer, playerIsBlack);
-            if (opening) return opening;
-
-            let winMove = findWinningMove(boardState, aiPlayer);
-            if (winMove) return {r: winMove.r, c: winMove.c, score: 99999999};
-
-            let blockMove = findWinningMove(boardState, playerNum);
-            if (blockMove) return {r: blockMove.r, c: blockMove.c, score: 88888888};
-
-            let rushMoves = findRushFour(boardState, aiPlayer);
-            if (rushMoves.length > 0) return rushMoves[0];
-
-            let blockRush = findRushFour(boardState, playerNum);
-            if (blockRush.length > 0) return blockRush[0];
-
-            const DEPTH = 4;
-            const CANDIDATE_COUNT = 16;
-            let candidates = getCandidates(boardState, CANDIDATE_COUNT, aiPlayer, isProMode, scoreModifier);
-            let bestScore = -Infinity;
-            let bestMoves = [];
-
-            for (let cand of candidates) {
-                boardState[cand.r][cand.c] = aiPlayer;
-                let score = minimax(boardState, DEPTH - 1, -Infinity, Infinity, false, DEPTH, aiPlayer, isProMode, scoreModifier);
-                boardState[cand.r][cand.c] = 0;
-
-                if (score > bestScore) {
-                    bestScore = score;
-                    bestMoves = [{r: cand.r, c: cand.c, score}];
-                } else if (score === bestScore) {
-                    bestMoves.push({r: cand.r, c: cand.c, score});
-                }
+            // 1. 开局
+            let opening = getOpeningMove(boardState, moveHistory);
+            if (opening && boardState[opening.row][opening.col] === 0) {
+                return { r: opening.row, c: opening.col, score: 99999999 };
             }
 
-            return bestMoves[Math.floor(Math.random() * bestMoves.length)];
+            // 2. AI 直接获胜（毫不犹豫）
+            let winMove = findWinningMove(boardState, aiPlayer);
+            if (winMove) {
+                return { r: winMove.row, c: winMove.col, score: 99999999 };
+            }
+
+            // 3. 必须堵对手的必胜点（聪明人绝不漏防）
+            let blockMove = findWinningMove(boardState, humanPlayer);
+            if (blockMove) {
+                return { r: blockMove.row, c: blockMove.col, score: 88888888 };
+            }
+
+            // 4. 获取候选点并评分
+            let candidates = getCandidates(boardState, aiPlayer, isProMode);
+            if (candidates.length === 0) {
+                return { r: 7, c: 7, score: 0 };
+            }
+
+            // 5. 选择策略：在 top3 中按加权随机选（更聪明的人会从几个好点中选，偶尔会选第二好的）
+            let top = candidates.slice(0, Math.min(3, candidates.length));
+            // 如果最高分远高于第二，则选最高（表明这是明显的必下点）
+            if (top.length > 1 && top[0].score - top[1].score > 5000) {
+                return { r: top[0].row, c: top[0].col, score: top[0].score };
+            }
+
+            // 否则按权重随机（体现人性化）
+            let totalWeight = top.reduce((sum, m) => sum + Math.max(m.score, 0), 0);
+            if (totalWeight === 0) {
+                let pick = top[Math.floor(Math.random() * top.length)];
+                return { r: pick.row, c: pick.col, score: 0 };
+            }
+            let rand = Math.random() * totalWeight;
+            let cum = 0;
+            for (let move of top) {
+                cum += Math.max(move.score, 0);
+                if (rand <= cum) {
+                    return { r: move.row, c: move.col, score: move.score };
+                }
+            }
+            let last = top[top.length - 1];
+            return { r: last.row, c: last.col, score: last.score };
         },
 
-        // 为了兼容旧代码，保留 checkForbidden 的引用（但实际调用 Rules）
         checkForbidden: function(row, col, boardState) {
             return Rules.checkForbidden(row, col, boardState, BOARD_SIZE);
         }

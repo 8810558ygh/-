@@ -97,7 +97,6 @@
     }
     .record-time { font-size: 0.8rem; color: #a09070; }
 
-    /* 右侧结果 + 复盘 */
     .record-right {
       display: flex;
       flex-direction: column;
@@ -180,6 +179,11 @@
     .ctrl-btn.active-speed {
       background: #f5c542; border-color: #f5c542; color: #1e160c;
     }
+    .ctrl-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+      filter: none;
+    }
     .replay-info {
       margin-top: 12px; color: #a09070; font-size: 0.9rem; text-align: center;
     }
@@ -254,6 +258,8 @@
       <button class="ctrl-btn secondary" id="speed05" onclick="setSpeed(0.5)">0.5x</button>
       <button class="ctrl-btn secondary active-speed" id="speed1" onclick="setSpeed(1)">1x</button>
       <button class="ctrl-btn secondary" id="speed2" onclick="setSpeed(2)">2x</button>
+      <!-- ===== 新增导入按钮 ===== -->
+      <button class="ctrl-btn" id="importBtn" onclick="importToLocal()" disabled>📥 导入棋盘</button>
     </div>
     <div class="replay-info" id="replayInfo">点击开始复盘</div>
   </div>
@@ -287,6 +293,7 @@
   let rCanvas = null;
   let rCtx = null;
   const BASE_INTERVAL = 700;
+  let currentReplayMode = 'casual'; // 新增
 
   async function init() {
     if (!window.supabase) { showToast('Supabase 库加载失败'); return; }
@@ -295,15 +302,12 @@
     const { data: { session } } = await supabase.auth.getSession();
     if (session) currentUser = session.user;
 
-    // 游客必须保证有ID
     if (!guestId) {
       guestId = 'guest_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
       localStorage.setItem('guest_id', guestId);
     }
 
-    // 先清理3天前的记录
     await cleanupOldRecords();
-    // 再加载战绩
     await loadRecords();
   }
 
@@ -342,33 +346,28 @@
     renderList();
   }
 
-  // 判断当前用户在这一局中的结果
   function getMyResult(g) {
     let myId = currentUser ? currentUser.id : guestId;
     let myRole = null;
 
-    // 优先用 ID 匹配
     if (g.black_id === myId) myRole = 'black';
     else if (g.white_id === myId) myRole = 'white';
 
-    // 兼容旧数据：用昵称兜底
     if (!myRole && g.black_player === myNick) myRole = 'black';
     else if (!myRole && g.white_player === myNick) myRole = 'white';
 
-    if (!myRole) return null; // 观战者或无法识别
+    if (!myRole) return null;
 
     let text, cls, icon;
     if (g.winner === 'draw') {
       text = '平局'; cls = 'draw'; icon = '🤝';
     } else if (g.winner === 'forbidden') {
-      // 黑棋禁手判负 → 白棋胜
       if (myRole === 'black') {
         text = '失败'; cls = 'lose'; icon = '❌';
       } else {
         text = '胜利'; cls = 'win'; icon = '✅';
       }
     } else {
-      // winner 是 black 或 white
       if (myRole === g.winner) {
         text = '胜利'; cls = 'win'; icon = '✅';
       } else {
@@ -411,7 +410,6 @@
 
       let modeTag = g.game_mode === 'pro' ? '<span class="record-tag pro">⚔️ 专业</span>' : '<span class="record-tag">🎋 业余</span>';
 
-      // 当前用户这局的个人结果
       let myRes = getMyResult(g);
       let resultHtml = '';
       if (myRes) {
@@ -448,10 +446,12 @@
     return div.innerHTML;
   }
 
-  // ========== 复盘 ==========
+  // ========== 复盘核心 ==========
   function openReplay(index) {
     let g = allRecords[index];
     if (!g || !g.moves || g.moves.length === 0) { showToast('该局无落子记录'); return; }
+
+    currentReplayMode = g.game_mode || 'casual'; // 记录模式
 
     replayMoves = g.moves;
     replayStep = 0;
@@ -465,6 +465,7 @@
     document.getElementById('progressFill').style.width = '0%';
     document.getElementById('replayInfo').innerText = '黑棋: ' + g.black_player + '　白棋: ' + g.white_player;
     document.getElementById('pauseBtn').innerText = '⏸️ 暂停';
+    document.getElementById('importBtn').disabled = true; // 初始禁用
     updateSpeedButtons();
 
     document.getElementById('replayModal').classList.add('show');
@@ -473,7 +474,6 @@
     rCtx = rCanvas.getContext('2d');
     drawReplayBoard();
 
-    // 延迟一点开始，让用户先看到空棋盘
     setTimeout(() => replayNext(), 400);
   }
 
@@ -503,17 +503,20 @@
       replayTimer = setTimeout(replayNext, BASE_INTERVAL / replaySpeed);
     } else {
       document.getElementById('pauseBtn').innerText = '🔁 已结束';
+      isPaused = true;
+      updateImportButton(); // 步数到末尾禁用导入
     }
+    updateImportButton(); // 每走一步更新按钮状态
   }
 
   function togglePause() {
     if (replayStep >= replayMoves.length) {
-      // 已结束，重置
       resetReplay();
       return;
     }
     isPaused = !isPaused;
     document.getElementById('pauseBtn').innerText = isPaused ? '▶️ 继续' : '⏸️ 暂停';
+    updateImportButton();
     if (!isPaused) replayNext();
   }
 
@@ -526,6 +529,7 @@
     document.getElementById('stepCurrent').innerText = '0';
     document.getElementById('progressFill').style.width = '0%';
     document.getElementById('pauseBtn').innerText = '⏸️ 暂停';
+    document.getElementById('importBtn').disabled = true;
     setTimeout(() => replayNext(), 300);
   }
 
@@ -539,6 +543,33 @@
     document.getElementById('speed05').classList.toggle('active-speed', replaySpeed === 0.5);
     document.getElementById('speed1').classList.toggle('active-speed', replaySpeed === 1);
     document.getElementById('speed2').classList.toggle('active-speed', replaySpeed === 2);
+  }
+
+  // ===== 导入按钮状态控制 =====
+  function updateImportButton() {
+    const btn = document.getElementById('importBtn');
+    // 只有暂停状态，且步数>0且步数未到末尾（即游戏尚未结束）才启用
+    if (isPaused && replayStep > 0 && replayStep < replayMoves.length) {
+      btn.disabled = false;
+    } else {
+      btn.disabled = true;
+    }
+  }
+
+  // ===== 导入功能 =====
+  function importToLocal() {
+    if (!isPaused || replayStep <= 0 || replayStep >= replayMoves.length) {
+      showToast('请先暂停复盘且步数未结束再导入');
+      return;
+    }
+    const data = {
+      moves: replayMoves,
+      step: replayStep,
+      mode: currentReplayMode
+    };
+    sessionStorage.setItem('gobang_replay_import', JSON.stringify(data));
+    showToast('导入成功，跳转到本地对局...');
+    window.location.href = '五子棋.html?load=replay';
   }
 
   // ========== 绘制 ==========
@@ -572,7 +603,6 @@
       }
     }
 
-    // 最后一步标记
     if (replayStep > 0 && replayStep <= replayMoves.length) {
       let last = replayMoves[replayStep - 1];
       let x = MARGIN + last.col * CELL_SIZE;

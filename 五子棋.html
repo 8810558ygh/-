@@ -107,14 +107,16 @@
 
   (function() {
     const urlParams = new URLSearchParams(window.location.search);
-    const gameMode = urlParams.get('mode') || 'casual';
-    const isProMode = gameMode === 'pro';
+    // 改为 let，允许导入时修改
+    let gameMode = urlParams.get('mode') || 'casual';
+    let isProMode = gameMode === 'pro';
 
     const modeTag = document.getElementById('modeTag');
+    const forbiddenHint = document.getElementById('forbiddenHint');
     if (isProMode) {
       modeTag.innerText = '⚔️ 专业模式（黑棋禁手）';
       modeTag.classList.add('pro');
-      document.getElementById('forbiddenHint').classList.add('show');
+      forbiddenHint.classList.add('show');
     }
 
     const BOARD_SIZE = 15;
@@ -153,6 +155,7 @@
       updateTurnDisplay();
       winnerBanner.textContent = '';
       drawBoard();
+      undoBtn.disabled = true;
     }
 
     function updateTurnDisplay() {
@@ -336,6 +339,7 @@
 
       board[row][col] = currentPlayer;
       moveHistory.push({ row, col, player: currentPlayer });
+      undoBtn.disabled = false;
 
       let winLine = Rules.checkWinWithLine(row, col, currentPlayer, board, BOARD_SIZE);
       if (winLine) {
@@ -369,9 +373,89 @@
       currentPlayer = lastMove.player;
       updateTurnDisplay();
       drawBoard();
+      if (moveHistory.length === 0) undoBtn.disabled = true;
     }
 
-    // 已删除 musicStarted 变量和自动播放逻辑
+    // =====================================================
+    // 新增：从复盘导入棋盘的功能
+    // =====================================================
+
+    function loadReplayData(data) {
+      // 1. 设置游戏模式
+      const isPro = data.mode === 'pro';
+      isProMode = isPro;
+      const modeTag = document.getElementById('modeTag');
+      const forbiddenHint = document.getElementById('forbiddenHint');
+      if (isPro) {
+        modeTag.innerText = '⚔️ 专业模式（黑棋禁手）';
+        modeTag.classList.add('pro');
+        forbiddenHint.classList.add('show');
+      } else {
+        modeTag.innerText = '🎋 业余模式';
+        modeTag.classList.remove('pro');
+        forbiddenHint.classList.remove('show');
+      }
+
+      // 2. 重置棋盘
+      board = Rules.initBoard(BOARD_SIZE);
+      moveHistory = [];
+      winLines = [];
+      forbiddenLines = [];
+      gameOver = false;
+      winner = null;
+
+      // 3. 回放棋谱到指定步数
+      const moves = data.moves;
+      let step = data.step;
+      if (step > moves.length) step = moves.length;
+      for (let i = 0; i < step; i++) {
+        const m = moves[i];
+        board[m.row][m.col] = m.player;
+        moveHistory.push({ row: m.row, col: m.col, player: m.player });
+      }
+
+      // 4. 设置当前玩家（轮到下一步的玩家）
+      if (moveHistory.length > 0) {
+        const last = moveHistory[moveHistory.length - 1];
+        currentPlayer = (last.player === 1) ? 2 : 1;
+      } else {
+        currentPlayer = 1;
+      }
+
+      // 5. 重置胜负状态
+      gameOver = false;
+      winner = null;
+      winLines = [];
+      forbiddenLines = [];
+
+      // 6. 更新UI
+      updateTurnDisplay();
+      drawBoard();
+      document.getElementById('winnerBanner').textContent = '';
+      undoBtn.disabled = (moveHistory.length === 0);
+    }
+
+    // 检测是否从复盘导入
+    if (window.location.search.includes('load=replay')) {
+      const dataStr = sessionStorage.getItem('gobang_replay_import');
+      if (dataStr) {
+        try {
+          const data = JSON.parse(dataStr);
+          sessionStorage.removeItem('gobang_replay_import');
+          // 等待DOM和游戏初始化完成
+          setTimeout(function() {
+            loadReplayData(data);
+          }, 100);
+        } catch(e) {
+          console.error('导入复盘数据失败', e);
+        }
+      }
+    }
+
+    // =====================================================
+    // 原有事件绑定（不变）
+    // =====================================================
+
     function handleCanvasClick(e) {
       if (gameOver) return;
 
@@ -389,9 +473,14 @@
     initAudio();
 
     canvas.addEventListener('click', handleCanvasClick);
-    restartBtn.addEventListener('click', () => initBoard());
-    undoBtn.addEventListener('click', () => undoMove());
-    window.addEventListener('resize', () => drawBoard());
+    restartBtn.addEventListener('click', function() {
+      if (!gameOver && moveHistory.length > 0) {
+        if (!confirm('确定要重新开始吗？')) return;
+      }
+      initBoard();
+    });
+    undoBtn.addEventListener('click', undoMove);
+    window.addEventListener('resize', function() { drawBoard(); });
 
     initBoard();
   })();
