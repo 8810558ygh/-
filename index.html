@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>东南五子 · 弈府</title>
 
   <!-- ===== PWA 配置 ===== -->
@@ -14,193 +14,54 @@
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.min.js"></script>
+  <!-- ===== 音频控制脚本 ===== -->
   <script src="audio.js"></script>
+  <!-- ===== 音乐播放器样式与脚本 ===== -->
   <link rel="stylesheet" href="music-player.css">
   <script src="music-player.js"></script>
 
-  <!-- ===== 强制全屏 + 横屏（用户手势触发） ===== -->
   <style>
-    #fullscreenHint {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0, 0, 0, 0.85);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      z-index: 99999;
-      color: #fff;
-      font-size: 1.5rem;
-      cursor: pointer;
-      transition: opacity 0.5s;
-      backdrop-filter: blur(10px);
-    }
-    #fullscreenHint.hidden {
-      opacity: 0;
-      pointer-events: none;
-    }
-    #fullscreenHint .icon {
-      font-size: 4rem;
-      margin-bottom: 20px;
-      animation: bounce 1.5s infinite;
-    }
-    #fullscreenHint .sub {
-      font-size: 1rem;
-      color: #a09070;
-      margin-top: 10px;
-    }
-    @keyframes bounce {
-      0%,
-      100% {
-        transform: scale(1);
-      }
-      50% {
-        transform: scale(1.2);
-      }
-    }
-  </style>
-
-  <script>
-    document.addEventListener('DOMContentLoaded', function() {
-      // 如果已经在全屏或 PWA 模式，直接锁定横屏
-      if (window.matchMedia('(display-mode: standalone)').matches || document.fullscreenElement) {
-        if (screen.orientation && screen.orientation.lock) {
-          screen.orientation.lock('landscape').catch(() => {});
-        }
-        return;
-      }
-
-      // 普通浏览器：显示全屏提示
-      const hint = document.createElement('div');
-      hint.id = 'fullscreenHint';
-      hint.innerHTML = `
-        <div class="icon">🔄</div>
-        <div>点击任意位置全屏横屏</div>
-        <div class="sub">推荐使用全屏模式获得更好体验</div>
-      `;
-      document.body.appendChild(hint);
-
-      // 用户点击任意位置触发全屏+横屏
-      const lockFullscreen = function() {
-        if (document.documentElement.requestFullscreen) {
-          document.documentElement.requestFullscreen().then(() => {
-            if (screen.orientation && screen.orientation.lock) {
-              screen.orientation.lock('landscape').catch(() => {});
-            }
-            hint.classList.add('hidden');
-            // 退出全屏时重新显示提示
-            document.addEventListener('fullscreenchange', function() {
-              if (!document.fullscreenElement) {
-                hint.classList.remove('hidden');
-              }
-            });
-          }).catch(() => {
-            // 全屏失败，直接尝试横屏
-            if (screen.orientation && screen.orientation.lock) {
-              screen.orientation.lock('landscape').catch(() => {});
-            }
-            hint.classList.add('hidden');
-          });
-        } else {
-          // 不支持全屏，直接横屏
-          if (screen.orientation && screen.orientation.lock) {
-            screen.orientation.lock('landscape').catch(() => {});
-          }
-          hint.classList.add('hidden');
-        }
-      };
-
-      // 监听点击/触屏事件
-      document.addEventListener('click', lockFullscreen);
-      document.addEventListener('touchstart', lockFullscreen);
-
-      // 如果用户已经手动横屏，自动隐藏提示
-      window.addEventListener('orientationchange', function() {
-        if (screen.orientation && screen.orientation.type.startsWith('landscape')) {
-          hint.classList.add('hidden');
-        }
-      });
-    });
-  </script>
-
-  <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-      font-family: 'Noto Serif SC', '楷体', 'KaiTi', serif;
-    }
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Noto Serif SC', '楷体', 'KaiTi', serif; }
     body {
       background: #2b1e0f;
       background-image: radial-gradient(circle at 25% 40%, rgba(210, 160, 90, 0.08) 2%, transparent 2.5%);
       background-size: 48px 48px;
       min-height: 100vh;
       color: #ecd9b4;
-      /* 防止页面滚动 */
-      overflow: hidden;
-      height: 100vh;
     }
 
-    .hidden {
-      display: none !important;
-    }
+    .hidden { display: none !important; }
     .toast {
-      position: fixed;
-      bottom: 30px;
-      left: 50%;
+      position: fixed; bottom: 30px; left: 50%;
       transform: translateX(-50%) translateY(100px);
       background: rgba(30, 20, 10, 0.96);
       backdrop-filter: blur(8px);
       color: #f5c542;
       border: 1px solid rgba(245, 197, 66, 0.5);
-      padding: 12px 28px;
-      border-radius: 40px;
-      font-size: 0.9rem;
-      z-index: 10000;
-      opacity: 0;
-      transition: 0.3s;
-      pointer-events: none;
-      white-space: nowrap;
+      padding: 12px 28px; border-radius: 40px;
+      font-size: 0.9rem; z-index: 10000;
+      opacity: 0; transition: 0.3s; pointer-events: none; white-space: nowrap;
     }
-    .toast.show {
-      opacity: 1;
-      transform: translateX(-50%) translateY(0);
-    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
     .top-bar {
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      height: 60px;
+      position: fixed; top: 0; left: 0; right: 0; height: 60px;
       background: rgba(25, 18, 10, 0.85);
       backdrop-filter: blur(12px);
       border-bottom: 1px solid rgba(230, 190, 110, 0.3);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 0 16px;
-      z-index: 100;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 16px; z-index: 100;
     }
     .logo {
       font-family: 'Orbitron', monospace;
-      font-size: 1.2rem;
-      font-weight: 700;
-      color: #e9bc6e;
+      font-size: 1.2rem; font-weight: 700; color: #e9bc6e;
       letter-spacing: 2px;
       white-space: nowrap;
     }
-    .top-left,
-    .top-right {
-      display: flex;
-      gap: 8px;
-      align-items: center;
+    .top-left, .top-right {
+      display: flex; gap: 8px; align-items: center;
     }
-    .personal-btn,
-    .settings-btn {
+    .personal-btn, .settings-btn {
       background: rgba(200, 160, 100, 0.2);
       border: 1px solid #e9bc6e;
       border-radius: 40px;
@@ -211,39 +72,16 @@
       transition: 0.2s;
       white-space: nowrap;
     }
-    .personal-btn:hover,
-    .settings-btn:hover {
+    .personal-btn:hover, .settings-btn:hover {
       background: rgba(200, 160, 100, 0.35);
-    }
-    .conn-mode-badge {
-      font-family: monospace;
-      background: #2a2013;
-      padding: 4px 10px;
-      border-radius: 32px;
-      letter-spacing: 1px;
-      border: 1px solid #bd9a60;
-      font-size: 0.7rem;
-      color: #e9bc6e;
-      white-space: nowrap;
-    }
-    .conn-mode-badge.p2p {
-      border-color: #e0816b;
-      color: #e0816b;
-    }
-    .conn-mode-badge.supa {
-      border-color: #6c9fd1;
-      color: #6c9fd1;
     }
 
     /* 登录页 */
     #loginScreen {
       min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 20px;
-      padding: 20px;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 20px; padding: 20px;
     }
     .login-card {
       background: rgba(0, 0, 0, 0.55);
@@ -257,8 +95,7 @@
     }
     .login-title {
       font-size: 2rem;
-      font-weight: 800;
-      color: #ebc282;
+      font-weight: 800; color: #ebc282;
       margin-bottom: 8px;
       line-height: 1.2;
     }
@@ -268,89 +105,55 @@
       margin-bottom: 24px;
     }
     .auth-tabs {
-      display: flex;
-      gap: 8px;
-      margin-bottom: 16px;
-      justify-content: center;
+      display: flex; gap: 8px; margin-bottom: 16px; justify-content: center;
     }
     .auth-tab {
-      background: transparent;
-      border: 1px solid #bd9a60;
-      color: #bd9a60;
-      padding: 6px 16px;
-      border-radius: 40px;
-      cursor: pointer;
-      font-size: 0.9rem;
-      transition: 0.2s;
+      background: transparent; border: 1px solid #bd9a60; color: #bd9a60;
+      padding: 6px 16px; border-radius: 40px; cursor: pointer;
+      font-size: 0.9rem; transition: 0.2s;
     }
     .auth-tab.active {
-      background: #bd9a60;
-      color: #1e160c;
-      font-weight: bold;
+      background: #bd9a60; color: #1e160c; font-weight: bold;
     }
     .auth-form {
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
+      display: flex; flex-direction: column; gap: 12px;
     }
     .auth-form input {
-      background: #fef3e2;
-      border: none;
-      padding: 10px 14px;
-      border-radius: 40px;
-      font-size: 1rem;
+      background: #fef3e2; border: none; padding: 10px 14px;
+      border-radius: 40px; font-size: 1rem;
     }
     .auth-form button {
       background: linear-gradient(145deg, #e6bb72, #b57c38);
-      border: none;
-      padding: 10px;
-      border-radius: 40px;
-      font-size: 1rem;
-      font-weight: bold;
-      cursor: pointer;
-      color: #1e160c;
-      transition: 0.2s;
+      border: none; padding: 10px;
+      border-radius: 40px; font-size: 1rem; font-weight: bold;
+      cursor: pointer; color: #1e160c; transition: 0.2s;
     }
-    .auth-form button:hover {
-      transform: translateY(-1px);
-    }
+    .auth-form button:hover { transform: translateY(-1px); }
     .auth-form button:disabled {
-      background: #5a4a3a;
-      color: #888;
-      cursor: not-allowed;
+      background: #5a4a3a; color: #888; cursor: not-allowed;
     }
     .auth-hint {
-      font-size: 0.8rem;
-      color: #a09070;
-      margin-top: 8px;
+      font-size: 0.8rem; color: #a09070; margin-top: 8px;
     }
     .guest-btn {
       margin-top: 16px;
-      background: transparent;
-      border: 1px dashed #bd9a60;
-      padding: 10px;
-      border-radius: 40px;
+      background: transparent; border: 1px dashed #bd9a60;
+      padding: 10px; border-radius: 40px;
       font-size: 0.95rem;
-      cursor: pointer;
-      color: #bd9a60;
-      transition: 0.2s;
-      width: 100%;
+      cursor: pointer; color: #bd9a60;
+      transition: 0.2s; width: 100%;
     }
     .guest-btn:hover {
       background: rgba(189, 154, 96, 0.15);
       border-style: solid;
     }
     .user-info-bar {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      justify-content: center;
-      margin-bottom: 16px;
+      display: flex; align-items: center; gap: 12px;
+      justify-content: center; margin-bottom: 16px;
       flex-wrap: wrap;
     }
     .user-info-bar span {
-      color: #e9bc6e;
-      font-weight: bold;
+      color: #e9bc6e; font-weight: bold;
       font-size: 0.95rem;
     }
     .logout-btn {
@@ -366,25 +169,21 @@
     /* 大厅页 */
     #hallScreen {
       min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
       gap: 30px;
       padding: 80px 16px 40px;
     }
     .hall-title {
       font-size: 2.2rem;
-      font-weight: 900;
-      color: #ebc282;
+      font-weight: 900; color: #ebc282;
       text-shadow: 0 0 30px rgba(235, 194, 130, 0.3);
       letter-spacing: 4px;
       text-align: center;
       line-height: 1.2;
     }
     .hall-subtitle {
-      font-size: 1rem;
-      color: #a09070;
+      font-size: 1rem; color: #a09070;
       margin-top: -16px;
       text-align: center;
     }
@@ -408,25 +207,20 @@
       text-align: center;
       cursor: pointer;
       transition: 0.2s;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 10px;
+      display: flex; flex-direction: column;
+      align-items: center; gap: 10px;
     }
     .mode-card:hover {
       border-color: #ebc282;
       transform: translateY(-4px);
-      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4);
+      box-shadow: 0 12px 30px rgba(0,0,0,0.4);
       background: rgba(45, 33, 20, 0.7);
     }
     .mode-icon {
       font-size: 2.8rem;
-      width: 72px;
-      height: 72px;
+      width: 72px; height: 72px;
       border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      display: flex; align-items: center; justify-content: center;
       background: rgba(200, 160, 100, 0.15);
       border: 2px solid rgba(220, 180, 100, 0.4);
     }
@@ -435,19 +229,13 @@
       border-color: rgba(224, 129, 107, 0.4);
     }
     .mode-name {
-      font-size: 1.2rem;
-      font-weight: bold;
-      color: #e9bc6e;
+      font-size: 1.2rem; font-weight: bold; color: #e9bc6e;
     }
     .mode-desc {
-      font-size: 0.8rem;
-      color: #a09070;
-      line-height: 1.4;
+      font-size: 0.8rem; color: #a09070; line-height: 1.4;
     }
     .mode-tag {
-      font-size: 0.65rem;
-      padding: 2px 10px;
-      border-radius: 20px;
+      font-size: 0.65rem; padding: 2px 10px; border-radius: 20px;
       background: rgba(245, 197, 66, 0.15);
       color: #f5c542;
       border: 1px solid rgba(245, 197, 66, 0.3);
@@ -455,26 +243,13 @@
 
     /* 弹窗通用 */
     .modal {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0, 0, 0, 0.7);
-      backdrop-filter: blur(8px);
-      z-index: 1000;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      visibility: hidden;
-      opacity: 0;
-      transition: 0.2s;
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.7); backdrop-filter: blur(8px);
+      z-index: 1000; display: flex; align-items: center; justify-content: center;
+      visibility: hidden; opacity: 0; transition: 0.2s;
       padding: 16px;
     }
-    .modal.show {
-      visibility: visible;
-      opacity: 1;
-    }
+    .modal.show { visibility: visible; opacity: 1; }
     .modal-content {
       background: #2c2419;
       border-radius: 40px;
@@ -487,9 +262,7 @@
       overflow-y: auto;
     }
     .modal-title {
-      color: #e9bc6e;
-      font-size: 1.3rem;
-      margin-bottom: 20px;
+      color: #e9bc6e; font-size: 1.3rem; margin-bottom: 20px;
     }
     .setting-group-title {
       text-align: left;
@@ -499,16 +272,12 @@
       padding-left: 4px;
     }
     .setting-option {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 12px 14px;
-      margin-bottom: 10px;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 12px 14px; margin-bottom: 10px;
       background: rgba(20, 15, 8, 0.7);
       border-radius: 18px;
       border: 2px solid transparent;
-      cursor: pointer;
-      transition: 0.2s;
+      cursor: pointer; transition: 0.2s;
     }
     .setting-option:hover {
       border-color: rgba(220, 180, 100, 0.4);
@@ -521,45 +290,28 @@
       text-align: left;
     }
     .setting-option-name {
-      font-weight: bold;
-      color: #ecd9b4;
-      font-size: 0.95rem;
+      font-weight: bold; color: #ecd9b4; font-size: 0.95rem;
     }
     .setting-option-desc {
-      font-size: 0.75rem;
-      color: #a09070;
-      margin-top: 2px;
+      font-size: 0.75rem; color: #a09070; margin-top: 2px;
     }
     .setting-check {
-      width: 20px;
-      height: 20px;
-      border-radius: 50%;
+      width: 20px; height: 20px; border-radius: 50%;
       border: 2px solid #bd9a60;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      display: flex; align-items: center; justify-content: center;
       flex-shrink: 0;
     }
     .setting-option.selected .setting-check {
-      background: #f5c542;
-      border-color: #f5c542;
+      background: #f5c542; border-color: #f5c542;
     }
     .setting-option.selected .setting-check::after {
-      content: '✓';
-      color: #1e160c;
-      font-weight: bold;
-      font-size: 0.8rem;
+      content: '✓'; color: #1e160c; font-weight: bold; font-size: 0.8rem;
     }
     .modal-close-btn {
       margin-top: 16px;
       background: linear-gradient(145deg, #e6bb72, #b57c38);
-      border: none;
-      padding: 10px 28px;
-      border-radius: 40px;
-      font-size: 1rem;
-      font-weight: bold;
-      cursor: pointer;
-      color: #1e160c;
+      border: none; padding: 10px 28px; border-radius: 40px;
+      font-size: 1rem; font-weight: bold; cursor: pointer; color: #1e160c;
     }
 
     /* 个人中心弹窗 */
@@ -573,39 +325,23 @@
       text-align: center;
     }
     .profile-modal-content h3 {
-      color: #e9bc6e;
-      margin-bottom: 16px;
+      color: #e9bc6e; margin-bottom: 16px;
       font-size: 1.2rem;
     }
     .profile-modal-content input {
-      background: #fff2e2;
-      border: none;
-      padding: 12px;
-      border-radius: 40px;
-      width: 100%;
-      margin: 16px 0;
-      font-size: 1rem;
+      background: #fff2e2; border: none; padding: 12px;
+      border-radius: 40px; width: 100%; margin: 16px 0; font-size: 1rem;
     }
     .profile-modal-content button {
-      background: #e9bc6e;
-      border: none;
-      padding: 8px 20px;
-      border-radius: 40px;
-      font-weight: bold;
-      cursor: pointer;
+      background: #e9bc6e; border: none; padding: 8px 20px;
+      border-radius: 40px; font-weight: bold; cursor: pointer;
       font-size: 0.95rem;
     }
     .profile-modal-content .records-btn {
       background: linear-gradient(145deg, #c89d60, #8f6a30);
-      border: none;
-      padding: 10px;
-      border-radius: 40px;
-      font-size: 1rem;
-      font-weight: bold;
-      cursor: pointer;
-      color: #1e160c;
-      width: 100%;
-      margin-top: 12px;
+      border: none; padding: 10px; border-radius: 40px;
+      font-size: 1rem; font-weight: bold; cursor: pointer;
+      color: #1e160c; width: 100%; margin-top: 12px;
       transition: 0.2s;
     }
     .profile-modal-content .records-btn:hover {
@@ -623,556 +359,404 @@
       margin-top: 8px;
     }
 
-    /* 响应式 - 只保留移动端关键适配，横屏优化在 style.css 末尾 */
+    /* 响应式 */
     @media (max-width: 768px) {
-      .top-bar {
-        height: 50px;
-        padding: 0 10px;
-      }
-      .logo {
-        font-size: 0.9rem;
-        letter-spacing: 1px;
-      }
-      .personal-btn,
-      .settings-btn {
-        padding: 3px 8px;
-        font-size: 0.7rem;
-      }
-      .conn-mode-badge {
-        padding: 3px 6px;
-        font-size: 0.6rem;
-      }
-      .login-card {
-        padding: 24px 16px;
-        border-radius: 32px;
-      }
-      .login-title {
-        font-size: 1.6rem;
-      }
-      .login-subtitle {
-        font-size: 0.85rem;
-        margin-bottom: 18px;
-      }
-      .auth-tab {
-        font-size: 0.8rem;
-        padding: 5px 12px;
-      }
-      .auth-form input {
-        font-size: 0.9rem;
-        padding: 8px 12px;
-      }
-      .auth-form button {
-        font-size: 0.9rem;
-        padding: 8px;
-      }
-      .guest-btn {
-        font-size: 0.85rem;
-        padding: 8px;
-      }
-      .hall-title {
-        font-size: 1.8rem;
-        letter-spacing: 2px;
-      }
-      .hall-subtitle {
-        font-size: 0.9rem;
-        margin-top: -12px;
-      }
-      .mode-cards {
-        gap: 12px;
-        padding: 0 4px;
-      }
-      .mode-card {
-        min-width: 120px;
-        flex: 1 1 140px;
-        padding: 18px 12px;
-        border-radius: 20px;
-      }
-      .mode-icon {
-        width: 60px;
-        height: 60px;
-        font-size: 2.2rem;
-      }
-      .mode-name {
-        font-size: 1rem;
-      }
-      .mode-desc {
-        font-size: 0.7rem;
-      }
-      .modal-content {
-        padding: 20px 16px;
-        border-radius: 28px;
-        max-width: 100%;
-        margin: 0 8px;
-      }
-      .profile-modal-content {
-        padding: 20px 16px;
-        border-radius: 28px;
-        max-width: 100%;
-        margin: 0 8px;
-      }
-      .modal-title {
-        font-size: 1.1rem;
-        margin-bottom: 16px;
-      }
-      .setting-option {
-        padding: 10px 12px;
-      }
-      .setting-option-name {
-        font-size: 0.85rem;
-      }
-      .setting-option-desc {
-        font-size: 0.7rem;
-      }
-      .modal-close-btn {
-        font-size: 0.9rem;
-        padding: 8px 20px;
-      }
+      .top-bar { height: 50px; padding: 0 10px; }
+      .logo { font-size: 0.9rem; letter-spacing: 1px; }
+      .personal-btn, .settings-btn { padding: 3px 8px; font-size: 0.7rem; }
+      .login-card { padding: 24px 16px; border-radius: 32px; }
+      .login-title { font-size: 1.6rem; }
+      .login-subtitle { font-size: 0.85rem; margin-bottom: 18px; }
+      .auth-tab { font-size: 0.8rem; padding: 5px 12px; }
+      .auth-form input { font-size: 0.9rem; padding: 8px 12px; }
+      .auth-form button { font-size: 0.9rem; padding: 8px; }
+      .guest-btn { font-size: 0.85rem; padding: 8px; }
+      .hall-title { font-size: 1.8rem; letter-spacing: 2px; }
+      .hall-subtitle { font-size: 0.9rem; margin-top: -12px; }
+      .mode-cards { gap: 12px; padding: 0 4px; }
+      .mode-card { min-width: 120px; flex: 1 1 140px; padding: 18px 12px; border-radius: 20px; }
+      .mode-icon { width: 60px; height: 60px; font-size: 2.2rem; }
+      .mode-name { font-size: 1rem; }
+      .mode-desc { font-size: 0.7rem; }
+      .modal-content { padding: 20px 16px; border-radius: 28px; max-width: 100%; margin: 0 8px; }
+      .profile-modal-content { padding: 20px 16px; border-radius: 28px; max-width: 100%; margin: 0 8px; }
+      .modal-title { font-size: 1.1rem; margin-bottom: 16px; }
+      .setting-option { padding: 10px 12px; }
+      .setting-option-name { font-size: 0.85rem; }
+      .setting-option-desc { font-size: 0.7rem; }
+      .modal-close-btn { font-size: 0.9rem; padding: 8px 20px; }
     }
 
     @media (max-width: 400px) {
-      .mode-card {
-        flex: 1 1 100%;
-        max-width: 100%;
-        min-width: unset;
-      }
-      .logo {
-        font-size: 0.75rem;
-      }
-      .personal-btn,
-      .settings-btn {
-        font-size: 0.6rem;
-        padding: 2px 6px;
-      }
-      .conn-mode-badge {
-        font-size: 0.5rem;
-        padding: 2px 4px;
-      }
-      .login-title {
-        font-size: 1.3rem;
-      }
-      .hall-title {
-        font-size: 1.5rem;
-      }
+      .mode-card { flex: 1 1 100%; max-width: 100%; min-width: unset; }
+      .logo { font-size: 0.75rem; }
+      .personal-btn, .settings-btn { font-size: 0.6rem; padding: 2px 6px; }
+      .login-title { font-size: 1.3rem; }
+      .hall-title { font-size: 1.5rem; }
     }
   </style>
-  <base target="_blank">
+<base target="_blank">
 </head>
 <body>
 
-  <div id="toast" class="toast"></div>
+<div id="toast" class="toast"></div>
 
-  <!-- ===== 登录页 ===== -->
-  <div id="loginScreen" class="hidden">
-    <div class="login-card">
-      <div class="login-title">⚫ 东南五子 · 弈府 ⚪</div>
-      <div class="login-subtitle">以棋会友，纵横经纬</div>
+<!-- ===== 登录页 ===== -->
+<div id="loginScreen" class="hidden">
+  <div class="login-card">
+    <div class="login-title">⚫ 东南五子 · 弈府 ⚪</div>
+    <div class="login-subtitle">以棋会友，纵横经纬</div>
 
-      <div class="user-info-bar hidden" id="userInfoBar">
-        <span id="userEmailDisplay"></span>
-        <button class="logout-btn" onclick="logout()">退出登录</button>
+    <div class="user-info-bar hidden" id="userInfoBar">
+      <span id="userEmailDisplay"></span>
+      <button class="logout-btn" onclick="logout()">退出登录</button>
+    </div>
+
+    <div id="authForms">
+      <div class="auth-tabs">
+        <button class="auth-tab active" onclick="switchAuthTab('login')" id="tabLogin">登录</button>
+        <button class="auth-tab" onclick="switchAuthTab('register')" id="tabRegister">注册</button>
       </div>
 
-      <div id="authForms">
-        <div class="auth-tabs">
-          <button class="auth-tab active" onclick="switchAuthTab('login')" id="tabLogin">登录</button>
-          <button class="auth-tab" onclick="switchAuthTab('register')" id="tabRegister">注册</button>
-        </div>
-
-        <div class="auth-form" id="loginForm">
-          <input type="email" id="loginEmail" placeholder="邮箱" autocomplete="email">
-          <input type="password" id="loginPassword" placeholder="密码" autocomplete="current-password">
-          <button onclick="handleLogin()" id="loginBtn">登录账号</button>
-        </div>
-
-        <div class="auth-form hidden" id="registerForm">
-          <input type="email" id="regEmail" placeholder="邮箱" autocomplete="email">
-          <input type="password" id="regPassword" placeholder="密码（至少6位）" autocomplete="new-password">
-          <input type="text" id="regNickname" placeholder="游戏昵称" maxlength="12">
-          <button onclick="handleRegister()" id="regBtn">注册账号</button>
-        </div>
+      <div class="auth-form" id="loginForm">
+        <input type="email" id="loginEmail" placeholder="邮箱" autocomplete="email">
+        <input type="password" id="loginPassword" placeholder="密码" autocomplete="current-password">
+        <button onclick="handleLogin()" id="loginBtn">登录账号</button>
       </div>
 
-      <button class="guest-btn" onclick="enterAsGuest()">🎋 以游客身份进入</button>
-      <div class="auth-hint" style="margin-top:12px;">登录后昵称自动同步到所有设备</div>
+      <div class="auth-form hidden" id="registerForm">
+        <input type="email" id="regEmail" placeholder="邮箱" autocomplete="email">
+        <input type="password" id="regPassword" placeholder="密码（至少6位）" autocomplete="new-password">
+        <input type="text" id="regNickname" placeholder="游戏昵称" maxlength="12">
+        <button onclick="handleRegister()" id="regBtn">注册账号</button>
+      </div>
+    </div>
+
+    <button class="guest-btn" onclick="enterAsGuest()">🎋 以游客身份进入</button>
+    <div class="auth-hint" style="margin-top:12px;">登录后昵称自动同步到所有设备</div>
+  </div>
+</div>
+
+<!-- ===== 大厅页 ===== -->
+<div id="hallScreen" class="hidden">
+  <div class="top-bar">
+    <div class="top-left">
+      <div class="logo">⚫ 东南五子·弈 ⚪</div>
+      <div class="personal-btn" id="personalCenterBtn" onclick="openProfile()">🧑 个人中心</div>
+    </div>
+    <div class="top-right">
+      <div class="settings-btn" onclick="openSettings()">⚙️ 设置</div>
     </div>
   </div>
 
-  <!-- ===== 大厅页 ===== -->
-  <div id="hallScreen" class="hidden">
-    <div class="top-bar">
-      <div class="top-left">
-        <div class="logo">⚫ 东南五子·弈 ⚪</div>
-        <div class="personal-btn" id="personalCenterBtn" onclick="openProfile()">🧑 个人中心</div>
-      </div>
-      <div class="top-right">
-        <div class="conn-mode-badge" id="connModeBadge">☁️ Supabase云端</div>
-        <div class="settings-btn" onclick="openSettings()">⚙️ 设置</div>
-      </div>
+  <div class="hall-title">弈府大厅</div>
+  <div class="hall-subtitle">选择你的对弈方式</div>
+
+  <div class="mode-cards">
+    <div class="mode-card" onclick="enterAIGame()">
+      <div class="mode-icon">🤖</div>
+      <div class="mode-name">AI 对战</div>
+      <div class="mode-desc">与智能棋手切磋棋艺<br>多种难度可选</div>
+      <div class="mode-tag">立即开始</div>
     </div>
 
-    <div class="hall-title">弈府大厅</div>
-    <div class="hall-subtitle">选择你的对弈方式</div>
+    <div class="mode-card" onclick="enterLocalGame()">
+      <div class="mode-icon">👥</div>
+      <div class="mode-name">双人本地</div>
+      <div class="mode-desc">同设备轮流对弈<br>面对面切磋</div>
+      <div class="mode-tag">立即开始</div>
+    </div>
 
-    <div class="mode-cards">
-      <div class="mode-card" onclick="enterAIGame()">
-        <div class="mode-icon">🤖</div>
-        <div class="mode-name">AI 对战</div>
-        <div class="mode-desc">与智能棋手切磋棋艺<br>多种难度可选</div>
-        <div class="mode-tag">立即开始</div>
-      </div>
-
-      <div class="mode-card" onclick="enterLocalGame()">
-        <div class="mode-icon">👥</div>
-        <div class="mode-name">双人本地</div>
-        <div class="mode-desc">同设备轮流对弈<br>面对面切磋</div>
-        <div class="mode-tag">立即开始</div>
-      </div>
-
-      <div class="mode-card online" onclick="enterOnlineGame()">
-        <div class="mode-icon">🌐</div>
-        <div class="mode-name">双人联机</div>
-        <div class="mode-desc">远程实时对弈<br>创建或加入房间</div>
-        <div class="mode-tag">立即开始</div>
-      </div>
+    <div class="mode-card online" onclick="enterOnlineGame()">
+      <div class="mode-icon">🌐</div>
+      <div class="mode-name">双人联机</div>
+      <div class="mode-desc">远程实时对弈<br>创建或加入房间</div>
+      <div class="mode-tag">立即开始</div>
     </div>
   </div>
+</div>
 
-  <!-- 设置弹窗 -->
-  <div id="settingsModal" class="modal">
-    <div class="modal-content">
-      <div class="modal-title">⚙️ 游戏设置</div>
+<!-- 设置弹窗 -->
+<div id="settingsModal" class="modal">
+  <div class="modal-content">
+    <div class="modal-title">⚙️ 游戏设置</div>
 
-      <div class="setting-group-title">联机方式</div>
-      <div class="setting-option" id="optSupa" onclick="selectMode('supabase')">
-        <div class="setting-option-left">
-          <div class="setting-option-name">☁️ Supabase 云端联机</div>
-          <div class="setting-option-desc">通过服务器中转，跨网络稳定连接</div>
-        </div>
-        <div class="setting-check"></div>
+    <!-- 游戏模式分组（已删除联机方式分组） -->
+    <div class="setting-group-title">游戏模式</div>
+    <div class="setting-option" id="optCasual" onclick="selectGameMode('casual')">
+      <div class="setting-option-left">
+        <div class="setting-option-name">🎋 业余模式</div>
+        <div class="setting-option-desc">无禁手，娱乐对局</div>
       </div>
-      <div class="setting-option" id="optP2P" onclick="selectMode('p2p')">
-        <div class="setting-option-left">
-          <div class="setting-option-name">🔗 P2P 直连</div>
-          <div class="setting-option-desc">点对点连接，低延迟但需同网络</div>
-        </div>
-        <div class="setting-check"></div>
+      <div class="setting-check"></div>
+    </div>
+    <div class="setting-option" id="optPro" onclick="selectGameMode('pro')">
+      <div class="setting-option-left">
+        <div class="setting-option-name">⚔️ 专业模式</div>
+        <div class="setting-option-desc">黑棋禁手（三三、四四、长连）</div>
       </div>
+      <div class="setting-check"></div>
+    </div>
 
-      <div class="setting-group-title">游戏模式</div>
-      <div class="setting-option" id="optCasual" onclick="selectGameMode('casual')">
-        <div class="setting-option-left">
-          <div class="setting-option-name">🎋 业余模式</div>
-          <div class="setting-option-desc">无禁手，娱乐对局</div>
-        </div>
-        <div class="setting-check"></div>
-      </div>
-      <div class="setting-option" id="optPro" onclick="selectGameMode('pro')">
-        <div class="setting-option-left">
-          <div class="setting-option-name">⚔️ 专业模式</div>
-          <div class="setting-option-desc">黑棋禁手（三三、四四、长连）</div>
-        </div>
-        <div class="setting-check"></div>
-      </div>
+    <button class="modal-close-btn" onclick="closeSettings()">确定</button>
+  </div>
+</div>
 
-      <button class="modal-close-btn" onclick="closeSettings()">确定</button>
+<!-- 个人中心弹窗 -->
+<div id="profileModal" class="modal">
+  <div class="profile-modal-content">
+    <h3>🧧 个人中心</h3>
+    <div id="profileInfo" style="color: #a09070; margin-bottom: 16px; font-size: 0.9rem;"></div>
+    <input type="text" id="nicknameInput" placeholder="输入昵称" maxlength="12">
+    <button onclick="saveNickname()">保存昵称</button>
+    <button class="records-btn" onclick="enterRecords()">📊 我的战绩</button>
+    <div style="margin-top: 12px;">
+      <button class="logout-btn" onclick="logout()">退出登录</button>
     </div>
   </div>
+</div>
 
-  <!-- 个人中心弹窗 -->
-  <div id="profileModal" class="modal">
-    <div class="profile-modal-content">
-      <h3>🧧 个人中心</h3>
-      <div id="profileInfo" style="color: #a09070; margin-bottom: 16px; font-size: 0.9rem;"></div>
-      <input type="text" id="nicknameInput" placeholder="输入昵称" maxlength="12">
-      <button onclick="saveNickname()">保存昵称</button>
-      <button class="records-btn" onclick="enterRecords()">📊 我的战绩</button>
-      <div style="margin-top: 12px;">
-        <button class="logout-btn" onclick="logout()">退出登录</button>
-      </div>
-    </div>
-  </div>
+<script>
+  const SUPABASE_URL = 'https://txgemtxikpieaqcohglr.supabase.co';
+  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR4Z2VtdHhpa3BpZWFxY29oZ2xyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk4MDY1NTIsImV4cCI6MjA5NTM4MjU1Mn0.I0PHUfWmiDpBnfjmTBJ1u6ybzZzhsTG0uaLbKBrcN1c';
 
-  <script>
-    const SUPABASE_URL = 'https://txgemtxikpieaqcohglr.supabase.co';
-    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR4Z2VtdHhpa3BpZWFxY29oZ2xyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk4MDY1NTIsImV4cCI6MjA5NTM4MjU1Mn0.I0PHUfWmiDpBnfjmTBJ1u6ybzZzhsTG0uaLbKBrcN1c';
+  let supabase = null;
+  let currentUser = null;
+  let myNick = localStorage.getItem('gonick') || ('游客' + Math.floor(Math.random() * 900 + 100));
+  let gameMode = localStorage.getItem('gameMode') || 'casual';
 
-    let supabase = null;
-    let currentUser = null;
-    let myNick = localStorage.getItem('gonick') || ('游客' + Math.floor(Math.random() * 900 + 100));
-    let connMode = localStorage.getItem('connMode') || 'supabase';
-    let gameMode = localStorage.getItem('gameMode') || 'casual';
+  // 确保游客有唯一ID，用于战绩存储
+  function ensureGuestId() {
+    if (!localStorage.getItem('guest_id')) {
+      localStorage.setItem('guest_id', 'guest_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6));
+    }
+  }
 
-    // 确保游客有唯一ID，用于战绩存储
-    function ensureGuestId() {
-      if (!localStorage.getItem('guest_id')) {
-        localStorage.setItem('guest_id', 'guest_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6));
-      }
+  async function initSupabase() {
+    ensureGuestId();
+    if (!window.supabase) { showToast('Supabase 库加载失败'); return; }
+    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session) {
+      await loadUserProfile(session.user);
+    } else {
+      showLoginScreen();
     }
 
-    async function initSupabase() {
-      ensureGuestId();
-      if (!window.supabase) { showToast('Supabase 库加载失败'); return; }
-      supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
+    supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_IN' && session) {
         await loadUserProfile(session.user);
-      } else {
+      } else if (event === 'SIGNED_OUT') {
+        currentUser = null;
         showLoginScreen();
       }
-
-      supabase.auth.onAuthStateChange(async (event, session) => {
-        if (event === 'SIGNED_IN' && session) {
-          await loadUserProfile(session.user);
-        } else if (event === 'SIGNED_OUT') {
-          currentUser = null;
-          showLoginScreen();
-        }
-      });
-    }
-
-    async function loadUserProfile(user) {
-      currentUser = user;
-      const { data, error } = await supabase
-        .from('profiles').select('nickname').eq('id', user.id).single();
-      if (!error && data && data.nickname) {
-        myNick = data.nickname;
-        localStorage.setItem('gonick', myNick);
-      }
-      showHallScreen();
-    }
-
-    function switchAuthTab(tab) {
-      document.getElementById('tabLogin').classList.toggle('active', tab === 'login');
-      document.getElementById('tabRegister').classList.toggle('active', tab === 'register');
-      document.getElementById('loginForm').classList.toggle('hidden', tab !== 'login');
-      document.getElementById('registerForm').classList.toggle('hidden', tab !== 'register');
-    }
-
-    async function handleRegister() {
-      const email = document.getElementById('regEmail').value.trim();
-      const password = document.getElementById('regPassword').value;
-      const nickname = document.getElementById('regNickname').value.trim() || '棋手';
-      if (!email || !password) { showToast('请填写邮箱和密码'); return; }
-      if (password.length < 6) { showToast('密码至少6位'); return; }
-
-      const btn = document.getElementById('regBtn');
-      btn.disabled = true;
-      btn.innerText = '注册中...';
-
-      const { data, error } = await supabase.auth.signUp({ email, password });
-      if (error) { showToast('注册失败: ' + error.message);
-        btn.disabled = false;
-        btn.innerText = '注册账号'; return; }
-
-      if (data.user) {
-        await supabase.from('profiles').insert({ id: data.user.id, nickname: nickname });
-        myNick = nickname;
-        localStorage.setItem('gonick', myNick);
-        showToast('注册成功！已自动登录');
-      }
-      btn.disabled = false;
-      btn.innerText = '注册账号';
-    }
-
-    async function handleLogin() {
-      const email = document.getElementById('loginEmail').value.trim();
-      const password = document.getElementById('loginPassword').value;
-      if (!email || !password) { showToast('请填写邮箱和密码'); return; }
-
-      const btn = document.getElementById('loginBtn');
-      btn.disabled = true;
-      btn.innerText = '登录中...';
-
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) { showToast('登录失败: ' + error.message);
-        btn.disabled = false;
-        btn.innerText = '登录账号'; return; }
-
-      showToast('登录成功！');
-      btn.disabled = false;
-      btn.innerText = '登录账号';
-    }
-
-    async function logout() {
-      if (supabase) await supabase.auth.signOut();
-      currentUser = null;
-      myNick = '游客' + Math.floor(Math.random() * 900 + 100);
-      localStorage.setItem('gonick', myNick);
-      closeProfile();
-      closeSettings();
-      showLoginScreen();
-      showToast('已退出登录');
-    }
-
-    function enterAsGuest() {
-      let nick = document.getElementById('loginNickname')?.value?.trim();
-      if (!nick) nick = myNick;
-      myNick = nick;
-      localStorage.setItem('gonick', myNick);
-      showToast('欢迎，' + myNick + '！');
-      showHallScreen();
-    }
-
-    function showLoginScreen() {
-      document.getElementById('loginScreen').classList.remove('hidden');
-      document.getElementById('hallScreen').classList.add('hidden');
-      document.getElementById('userInfoBar').classList.add('hidden');
-      document.getElementById('authForms').classList.remove('hidden');
-      document.getElementById('loginEmail').value = '';
-      document.getElementById('loginPassword').value = '';
-    }
-
-    function showHallScreen() {
-      document.getElementById('loginScreen').classList.add('hidden');
-      document.getElementById('hallScreen').classList.remove('hidden');
-      updateConnBadge();
-
-      let pBtn = document.getElementById('personalCenterBtn');
-      pBtn.innerText = '🧑 ' + myNick;
-
-      if (currentUser) {
-        document.getElementById('userInfoBar').classList.remove('hidden');
-        document.getElementById('authForms').classList.add('hidden');
-        document.getElementById('userEmailDisplay').innerText = currentUser.email;
-      }
-    }
-
-    function updateConnBadge() {
-      let badge = document.getElementById('connModeBadge');
-      if (connMode === 'p2p') {
-        badge.innerText = '🔗 P2P直连';
-        badge.className = 'conn-mode-badge p2p';
-      } else {
-        badge.innerText = '☁️ Supabase云端';
-        badge.className = 'conn-mode-badge supa';
-      }
-    }
-
-    function openSettings() {
-      document.getElementById('settingsModal').classList.add('show');
-      updateSettingsUI();
-    }
-
-    function closeSettings() {
-      document.getElementById('settingsModal').classList.remove('show');
-    }
-
-    function updateSettingsUI() {
-      document.getElementById('optSupa').classList.toggle('selected', connMode === 'supabase');
-      document.getElementById('optP2P').classList.toggle('selected', connMode === 'p2p');
-      document.getElementById('optCasual').classList.toggle('selected', gameMode === 'casual');
-      document.getElementById('optPro').classList.toggle('selected', gameMode === 'pro');
-    }
-
-    function selectMode(mode) {
-      connMode = mode;
-      localStorage.setItem('connMode', connMode);
-      updateSettingsUI();
-      updateConnBadge();
-      showToast('已切换为 ' + (mode === 'p2p' ? 'P2P直连' : 'Supabase云端'));
-    }
-
-    function selectGameMode(mode) {
-      gameMode = mode;
-      localStorage.setItem('gameMode', gameMode);
-      updateSettingsUI();
-      showToast('已切换为 ' + (mode === 'pro' ? '专业模式（含禁手）' : '业余模式'));
-    }
-
-    function openProfile() {
-      document.getElementById('profileModal').classList.add('show');
-      document.getElementById('nicknameInput').value = myNick;
-      let info = document.getElementById('profileInfo');
-      if (currentUser) {
-        info.innerHTML = '当前账号: <span style="color:#e9bc6e">' + currentUser.email + '</span><br>昵称: <span style="color:#e9bc6e">' + myNick + '</span>';
-      } else {
-        info.innerHTML = '当前身份: <span style="color:#e9bc6e">游客</span><br>昵称: <span style="color:#e9bc6e">' + myNick + '</span>';
-      }
-    }
-
-    function closeProfile() {
-      document.getElementById('profileModal').classList.remove('show');
-    }
-
-    async function saveNickname() {
-      let newName = document.getElementById('nicknameInput').value.trim();
-      if (!newName) { showToast('昵称不能为空'); return; }
-      myNick = newName;
-      localStorage.setItem('gonick', myNick);
-      if (currentUser && supabase) {
-        await supabase.from('profiles').upsert({ id: currentUser.id, nickname: newName, updated_at: new Date().toISOString() });
-      }
-      document.getElementById('personalCenterBtn').innerText = '🧑 ' + myNick;
-      showToast('昵称已更新' + (currentUser ? '并同步到云端' : ''));
-      closeProfile();
-    }
-
-    function enterRecords() {
-      window.location.href = '五子棋战绩.html';
-    }
-
-    /* ========== 三个模式跳转函数 ========== */
-    function enterAIGame() {
-      let params = new URLSearchParams();
-      params.set('nickname', myNick);
-      params.set('mode', gameMode);
-      if (currentUser) {
-        params.set('uid', currentUser.id);
-      }
-      window.location.href = '五子棋AI.html?' + params.toString();
-    }
-
-    function enterLocalGame() {
-      let params = new URLSearchParams();
-      params.set('nick', myNick);
-      params.set('mode', gameMode);
-      window.location.href = '五子棋.html?' + params.toString();
-    }
-
-    function enterOnlineGame() {
-      let params = new URLSearchParams();
-      params.set('nick', myNick);
-      params.set('mode', gameMode);
-      if (currentUser) {
-        params.set('uid', currentUser.id);
-        params.set('email', currentUser.email);
-      }
-
-      let targetPage = connMode === 'p2p' ? '五子棋P2P.html' : '五子棋supabase.html';
-      window.location.href = targetPage + '?' + params.toString();
-    }
-
-    function showToast(msg) {
-      let t = document.getElementById('toast');
-      t.innerText = msg;
-      t.classList.add('show');
-      setTimeout(() => t.classList.remove('show'), 2500);
-    }
-
-    document.querySelectorAll('.modal').forEach(m => {
-      m.addEventListener('click', (e) => {
-        if (e.target === m) m.classList.remove('show');
-      });
     });
+  }
 
-    // 初始化 Supabase
-    initSupabase();
-
-    // ===== PWA: 注册 Service Worker =====
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', function() {
-        navigator.serviceWorker.register('sw.js')
-          .then(function(registration) {
-            console.log('✅ Service Worker 注册成功');
-          })
-          .catch(function(error) {
-            console.log('❌ Service Worker 注册失败:', error);
-          });
-      });
+  async function loadUserProfile(user) {
+    currentUser = user;
+    const { data, error } = await supabase
+      .from('profiles').select('nickname').eq('id', user.id).single();
+    if (!error && data && data.nickname) {
+      myNick = data.nickname;
+      localStorage.setItem('gonick', myNick);
     }
+    showHallScreen();
+  }
 
-    // ===== 音频控件初始化（由 music-player.js 自动处理） =====
-  </script>
+  function switchAuthTab(tab) {
+    document.getElementById('tabLogin').classList.toggle('active', tab === 'login');
+    document.getElementById('tabRegister').classList.toggle('active', tab === 'register');
+    document.getElementById('loginForm').classList.toggle('hidden', tab !== 'login');
+    document.getElementById('registerForm').classList.toggle('hidden', tab !== 'register');
+  }
+
+  async function handleRegister() {
+    const email = document.getElementById('regEmail').value.trim();
+    const password = document.getElementById('regPassword').value;
+    const nickname = document.getElementById('regNickname').value.trim() || '棋手';
+    if (!email || !password) { showToast('请填写邮箱和密码'); return; }
+    if (password.length < 6) { showToast('密码至少6位'); return; }
+
+    const btn = document.getElementById('regBtn');
+    btn.disabled = true; btn.innerText = '注册中...';
+
+    const { data, error } = await supabase.auth.signUp({ email, password });
+    if (error) { showToast('注册失败: ' + error.message); btn.disabled = false; btn.innerText = '注册账号'; return; }
+
+    if (data.user) {
+      await supabase.from('profiles').insert({ id: data.user.id, nickname: nickname });
+      myNick = nickname;
+      localStorage.setItem('gonick', myNick);
+      showToast('注册成功！已自动登录');
+    }
+    btn.disabled = false; btn.innerText = '注册账号';
+  }
+
+  async function handleLogin() {
+    const email = document.getElementById('loginEmail').value.trim();
+    const password = document.getElementById('loginPassword').value;
+    if (!email || !password) { showToast('请填写邮箱和密码'); return; }
+
+    const btn = document.getElementById('loginBtn');
+    btn.disabled = true; btn.innerText = '登录中...';
+
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) { showToast('登录失败: ' + error.message); btn.disabled = false; btn.innerText = '登录账号'; return; }
+
+    showToast('登录成功！');
+    btn.disabled = false; btn.innerText = '登录账号';
+  }
+
+  async function logout() {
+    if (supabase) await supabase.auth.signOut();
+    currentUser = null;
+    myNick = '游客' + Math.floor(Math.random() * 900 + 100);
+    localStorage.setItem('gonick', myNick);
+    closeProfile();
+    closeSettings();
+    showLoginScreen();
+    showToast('已退出登录');
+  }
+
+  function enterAsGuest() {
+    let nick = document.getElementById('loginNickname')?.value?.trim();
+    if (!nick) nick = myNick;
+    myNick = nick;
+    localStorage.setItem('gonick', myNick);
+    showToast('欢迎，' + myNick + '！');
+    showHallScreen();
+  }
+
+  function showLoginScreen() {
+    document.getElementById('loginScreen').classList.remove('hidden');
+    document.getElementById('hallScreen').classList.add('hidden');
+    document.getElementById('userInfoBar').classList.add('hidden');
+    document.getElementById('authForms').classList.remove('hidden');
+    document.getElementById('loginEmail').value = '';
+    document.getElementById('loginPassword').value = '';
+  }
+
+  function showHallScreen() {
+    document.getElementById('loginScreen').classList.add('hidden');
+    document.getElementById('hallScreen').classList.remove('hidden');
+
+    let pBtn = document.getElementById('personalCenterBtn');
+    pBtn.innerText = '🧑 ' + myNick;
+
+    if (currentUser) {
+      document.getElementById('userInfoBar').classList.remove('hidden');
+      document.getElementById('authForms').classList.add('hidden');
+      document.getElementById('userEmailDisplay').innerText = currentUser.email;
+    }
+  }
+
+  function openSettings() {
+    document.getElementById('settingsModal').classList.add('show');
+    updateSettingsUI();
+  }
+  function closeSettings() {
+    document.getElementById('settingsModal').classList.remove('show');
+  }
+  function updateSettingsUI() {
+    document.getElementById('optCasual').classList.toggle('selected', gameMode === 'casual');
+    document.getElementById('optPro').classList.toggle('selected', gameMode === 'pro');
+  }
+  function selectGameMode(mode) {
+    gameMode = mode;
+    localStorage.setItem('gameMode', gameMode);
+    updateSettingsUI();
+    showToast('已切换为 ' + (mode === 'pro' ? '专业模式（含禁手）' : '业余模式'));
+  }
+
+  function openProfile() {
+    document.getElementById('profileModal').classList.add('show');
+    document.getElementById('nicknameInput').value = myNick;
+    let info = document.getElementById('profileInfo');
+    if (currentUser) {
+      info.innerHTML = '当前账号: <span style="color:#e9bc6e">' + currentUser.email + '</span><br>昵称: <span style="color:#e9bc6e">' + myNick + '</span>';
+    } else {
+      info.innerHTML = '当前身份: <span style="color:#e9bc6e">游客</span><br>昵称: <span style="color:#e9bc6e">' + myNick + '</span>';
+    }
+  }
+  function closeProfile() {
+    document.getElementById('profileModal').classList.remove('show');
+  }
+  async function saveNickname() {
+    let newName = document.getElementById('nicknameInput').value.trim();
+    if (!newName) { showToast('昵称不能为空'); return; }
+    myNick = newName;
+    localStorage.setItem('gonick', myNick);
+    if (currentUser && supabase) {
+      await supabase.from('profiles').upsert({ id: currentUser.id, nickname: newName, updated_at: new Date().toISOString() });
+    }
+    document.getElementById('personalCenterBtn').innerText = '🧑 ' + myNick;
+    showToast('昵称已更新' + (currentUser ? '并同步到云端' : ''));
+    closeProfile();
+  }
+
+  function enterRecords() {
+    window.location.href = '五子棋战绩.html';
+  }
+
+  /* ========== 三个模式跳转函数 ========== */
+  function enterAIGame() {
+    let params = new URLSearchParams();
+    params.set('nickname', myNick);
+    params.set('mode', gameMode);
+    if (currentUser) {
+      params.set('uid', currentUser.id);
+    }
+    window.location.href = '五子棋AI.html?' + params.toString();
+  }
+
+  function enterLocalGame() {
+    let params = new URLSearchParams();
+    params.set('nick', myNick);
+    params.set('mode', gameMode);
+    window.location.href = '五子棋.html?' + params.toString();
+  }
+
+  function enterOnlineGame() {
+    let params = new URLSearchParams();
+    params.set('nick', myNick);
+    params.set('mode', gameMode);
+    if (currentUser) {
+      params.set('uid', currentUser.id);
+      params.set('email', currentUser.email);
+    }
+    // 直接跳转到混合模式联机页面
+    window.location.href = '五子棋supabase.html?' + params.toString();
+  }
+
+  function showToast(msg) {
+    let t = document.getElementById('toast');
+    t.innerText = msg; t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2500);
+  }
+
+  document.querySelectorAll('.modal').forEach(m => {
+    m.addEventListener('click', (e) => {
+      if (e.target === m) m.classList.remove('show');
+    });
+  });
+
+  // 初始化 Supabase
+  initSupabase();
+
+  // ===== PWA: 注册 Service Worker =====
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function() {
+      navigator.serviceWorker.register('sw.js')
+        .then(function(registration) {
+          console.log('✅ Service Worker 注册成功');
+        })
+        .catch(function(error) {
+          console.log('❌ Service Worker 注册失败:', error);
+        });
+    });
+  }
+</script>
 </body>
 </html>

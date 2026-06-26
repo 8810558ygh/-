@@ -3,9 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>东南五子 · 云端对弈</title>
+  <title>东南五子 · 混合联机</title>
   <link rel="stylesheet" href="style.css">
   <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
   <script src="goban.js"></script>
   <script src="rules.js"></script>
   <script src="online-ui.js"></script>
@@ -34,25 +35,88 @@
     .top-btn:hover {
       background: rgba(200, 160, 100, 0.35);
     }
+    .voice-bar {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 10px;
+      padding: 6px 12px;
+      background: rgba(20, 15, 8, 0.7);
+      border-radius: 30px;
+      margin: 8px auto;
+      max-width: 400px;
+    }
+    .voice-btn {
+      background: transparent;
+      border: 2px solid #555;
+      border-radius: 30px;
+      color: #a09070;
+      cursor: pointer;
+      padding: 4px 14px;
+      font-size: 0.85rem;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: 0.2s;
+      font-family: inherit;
+      font-weight: bold;
+    }
+    .voice-btn.active-mic {
+      border-color: #4ade80;
+      color: #4ade80;
+      background: rgba(74, 222, 128, 0.15);
+    }
+    .voice-btn.inactive-mic {
+      border-color: #f87171;
+      color: #f87171;
+      background: rgba(248, 113, 113, 0.1);
+    }
+    .voice-btn.active-speaker {
+      border-color: #6c9fd1;
+      color: #6c9fd1;
+      background: rgba(108, 159, 209, 0.15);
+    }
+    .voice-btn.inactive-speaker {
+      border-color: #555;
+      color: #a09070;
+    }
+    .vol-bars { display: flex; align-items: flex-end; gap: 3px; height: 24px; }
+    .vol-bar {
+      display: inline-block;
+      width: 5px;
+      background: rgba(255,255,255,0.15);
+      border-radius: 2px 2px 0 0;
+      transition: all 0.15s;
+      height: 4px;
+      min-height: 4px;
+      max-height: 24px;
+    }
+    .vol-bar.active { background: #fff; box-shadow: 0 0 8px rgba(255,255,255,0.5); }
+    .vol-bar[data-level="1"].active { height: 20%; }
+    .vol-bar[data-level="2"].active { height: 40%; }
+    .vol-bar[data-level="3"].active { height: 60%; }
+    .vol-bar[data-level="4"].active { height: 80%; }
+    .vol-bar[data-level="5"].active { height: 100%; }
   </style>
 </head>
 <body>
 
 <div id="toast" class="toast"></div>
 <div class="top-bar">
-  <div class="logo">⚫ 东南五子·弈 ⚪</div>
+  <div class="logo">⚫ 东南五子·混合联机 ⚪</div>
   <div class="top-right">
     <div class="personal-btn" id="personalCenterBtn">🧑 个人中心</div>
-    <div class="conn-status"><span class="conn-dot conn-connecting" id="statusDot"></span><span id="statusText">未连接</span></div>
+    <div class="conn-status"><span class="conn-dot conn-connecting" id="statusDot"></span><span id="statusText">连接中</span></div>
     <div class="room-code-badge" id="roomCodeDisplay" onclick="copyRoomCode()">----</div>
     <button class="top-btn" onclick="goToHall()">🏠 大厅</button>
   </div>
 </div>
 
+<!-- 入口 -->
 <div id="entryScreen">
   <div class="entry-card">
-    <div class="entry-title">⚫ 五子棋 · 云端对弈 ⚪</div>
-    <div class="user-info-display" id="userInfoDisplay">
+    <div class="entry-title">⚫ 五子棋 · 混合联机 ⚪</div>
+    <div class="user-info-display">
       <div class="nick">👤 <span id="displayNickname">游客</span></div>
       <div class="email" id="displayEmailArea"></div>
     </div>
@@ -60,15 +124,27 @@
       <button class="entry-btn" id="createRoomBtn">🏮 创建房间</button>
       <button class="entry-btn" id="showJoinBtn">🎋 加入房间</button>
     </div>
-    <div id="joinRoomPanel" style="display: none;" class="join-input-area">
+    <div id="joinRoomPanel" style="display:none;" class="join-input-area">
       <input type="text" id="joinRoomCodeInput" placeholder="房间代码" maxlength="8" autocomplete="off">
       <button class="entry-btn" id="confirmJoinBtn">进入</button>
     </div>
   </div>
 </div>
 
+<!-- 大厅 -->
 <div id="lobbyScreen" class="hidden">
-  <div class="lobby-mode-bar" id="lobbyModeBar">🎮 当前模式：业余模式</div>
+  <div class="lobby-mode-bar" id="lobbyModeBar">🎮 混合模式 (P2P + 云端备份)</div>
+  <div class="voice-bar">
+    <button class="voice-btn inactive-mic" id="micBtn" onclick="toggleMic()"><span>🎤</span> <span class="mic-status">关</span></button>
+    <div class="vol-bars">
+      <span class="vol-bar" data-level="1"></span>
+      <span class="vol-bar" data-level="2"></span>
+      <span class="vol-bar" data-level="3"></span>
+      <span class="vol-bar" data-level="4"></span>
+      <span class="vol-bar" data-level="5"></span>
+    </div>
+    <button class="voice-btn inactive-speaker" id="speakerBtn" onclick="toggleSpeaker()"><span>🔊</span> <span class="speaker-status">关</span></button>
+  </div>
   <div class="lobby-layout">
     <div class="lobby-column col-black">
       <div class="lobby-column-header">⚫ 黑棋方</div>
@@ -93,16 +169,17 @@
   </div>
   <button class="start-game-btn" id="startGameButton" onclick="requestStartGame()">▶ 开始对弈</button>
   <button class="game-btn secondary" onclick="leaveRoom()" style="margin-top:15px;">🚪 退出房间</button>
-  <div class="lobby-hint" style="margin-top: 20px; color:#c8aa77;">✨ 点击空位换座，有人则不能换</div>
+  <div class="lobby-hint" style="margin-top:20px;color:#c8aa77;">✨ 数据优先走 P2P，断线自动切换云端</div>
 </div>
 
+<!-- 游戏 -->
 <div id="gameScreen" class="hidden">
   <div class="game-container-online">
     <div class="board-panel">
       <div class="board-wrap">
         <div id="turnReminder" class="turn-reminder">⏳ 等待对局开始...</div>
         <canvas id="gobanCanvas" width="800" height="800"></canvas>
-        <div style="display: flex; justify-content: center; gap: 15px; margin-top: 15px;">
+        <div style="display:flex;justify-content:center;gap:15px;margin-top:15px;">
           <button class="game-btn" id="btnSurrender" onclick="sendSurrender()">🏳️ 投降</button>
           <button class="game-btn" id="btnDraw" onclick="sendDrawRequest()">🤝 平局</button>
         </div>
@@ -111,8 +188,8 @@
     <div class="chat-panel">
       <div class="game-info">
         <div>🏠 房间: <span id="gameRoomCode">----</span></div>
-        <div>🎴 你的身份: <span id="myRoleDisplay">观战</span> · <span id="gameStatus">未开始</span></div>
-        <div>🎮 游戏模式: <span id="gameModeDisplay">业余模式</span></div>
+        <div>🎴 身份: <span id="myRoleDisplay">观战</span> · <span id="gameStatus">未开始</span></div>
+        <div>🎮 模式: <span id="gameModeDisplay">混合模式</span></div>
         <div class="mini-players">
           <div class="mini-card" id="miniBlack"><div>⚫ 黑棋</div><div id="blackPlayerName">空位</div></div>
           <div class="mini-card" id="miniWhite"><div>⚪ 白棋</div><div id="whitePlayerName">空位</div></div>
@@ -120,7 +197,18 @@
         <div class="turn-indicator" id="turnIndicator">⚫ 黑棋回合</div>
         <div id="winnerMessage"></div>
       </div>
-      <div class="chat-messages" id="chatMessagesArea"><div class="chat-msg system">🎋 欢迎来到棋室，落子无悔</div></div>
+      <div class="voice-bar" style="border-radius:0;margin:0;background:rgba(20,15,8,0.5);">
+        <button class="voice-btn inactive-mic" id="micBtnGame" onclick="toggleMic()"><span>🎤</span> <span class="mic-status">关</span></button>
+        <div class="vol-bars">
+          <span class="vol-bar" data-level="1"></span>
+          <span class="vol-bar" data-level="2"></span>
+          <span class="vol-bar" data-level="3"></span>
+          <span class="vol-bar" data-level="4"></span>
+          <span class="vol-bar" data-level="5"></span>
+        </div>
+        <button class="voice-btn inactive-speaker" id="speakerBtnGame" onclick="toggleSpeaker()"><span>🔊</span> <span class="speaker-status">关</span></button>
+      </div>
+      <div class="chat-messages" id="chatMessagesArea"><div class="chat-msg system">🎋 欢迎，落子无悔</div></div>
       <div class="chat-input-area">
         <input type="text" id="chatMsgInput" placeholder="说点什么..." maxlength="200" onkeypress="if(event.key==='Enter') sendChatMsg()">
         <button class="game-btn" onclick="sendChatMsg()">传讯</button>
@@ -242,6 +330,18 @@
     else emailArea.innerText = '';
   }
 
+  function updateConnUI(online) {
+    let dot = document.getElementById('statusDot');
+    let txt = document.getElementById('statusText');
+    if (online) {
+      dot.className = 'conn-dot conn-online';
+      txt.innerText = '在线';
+    } else {
+      dot.className = 'conn-dot conn-offline';
+      txt.innerText = '离线';
+    }
+  }
+
   // ========== 游戏核心 ==========
   function checkWinWithLine(row, col, player) {
     return Rules.checkWinWithLine(row, col, player, window.GAME.board, BOARD_SIZE);
@@ -296,21 +396,6 @@
       else setTimeout(onComplete, 300);
     }
     requestAnimationFrame(frame);
-  }
-
-  // ==================== 广播 ====================
-  async function broadcastToAll(msg, exceptId) {
-    if (msg.type === 'move') {
-      await supabaseClient.from('rooms').update({
-        board_state: window.GAME.board,
-        current_player: window.GAME.currentPlayer,
-        move_history: window.GAME.moveHistory,
-        game_over: window.GAME.gameOver,
-        winner: window.GAME.winner,
-        win_lines: window.GAME.winLines,
-        forbidden_lines: window.GAME.forbiddenLines
-      }).eq('room_code', window.GAME.roomId);
-    }
   }
 
   // ==================== 战绩保存 ====================
@@ -406,11 +491,6 @@
       particles.appendChild(p);
     }
     overlay.classList.add('show');
-    setTimeout(() => {
-      if (document.getElementById('gameEndOverlay').classList.contains('show')) {
-        exitToLobby();
-      }
-    }, 3500);
   }
 
   // ========== 构建上下文 ==========
@@ -419,13 +499,20 @@
       state: window.GAME,
       myNick: myNick,
       myUserId: myUserId,
-      broadcastToAll: broadcastToAll,
+      userId: myUserId,
+      nickname: myNick,
+      gameMode: gameMode,
+      broadcastToAll: function(msg, exceptId) {
+        // 使用 SupabaseNetwork 的 broadcastToAll
+        SupabaseNetwork.broadcastToAll(msg, this, exceptId);
+      },
       drawBoardFn: drawBoard,
       initBoardDataFn: initBoardData,
       checkWinFn: checkWinWithLine,
       endGameFn: endGame,
       showWinnerMsgFn: showWinnerMsg,
       showToastFn: showToast,
+      updateConnUI: updateConnUI,
       addChatMsgFn: window.Core.addChatMessageOnline,
       updateUIFns: {
         updateLobbyUI: function() { window.UI.updateLobbyUI(window.GAME.lobbySeats, window.GAME.isHost, window.GAME.roomGameMode); },
@@ -475,21 +562,244 @@
 
   function tryPlace(row, col) {
     const context = buildContext();
-    window.Core.tryPlaceOnline(row, col, context);
+    SupabaseNetwork.tryPlace(context, row, col);
   }
 
   // ========== 返回大厅 ==========
   function goToHall() {
-    if (window.roomChannel) {
-      try { window.roomChannel.unsubscribe(); } catch(e) {}
-    }
-    if (window.presenceChannel) {
-      try { window.presenceChannel.unsubscribe(); } catch(e) {}
-    }
+    if (window.peer) { try { window.peer.destroy(); } catch(e) {} }
     window.location.href = 'index.html';
   }
 
-  // ========== 事件绑定（已移除 playBgMusic 调用） ==========
+  // ========== 语音功能 ==========
+  let _isMicOn = false;
+  let _isSpeakerOn = false;
+  let _localStream = null;
+  let _processedStream = null;
+  let audioContext = null;
+  let analyser = null;
+  let dataArray = null;
+  let animationId = null;
+  let audioSourceNode = null;
+  let gainNode = null;
+  let destNode = null;
+  const MIC_GAIN = 2.5;
+
+  window._isMicOn = _isMicOn;
+  window._isSpeakerOn = _isSpeakerOn;
+  window._localStream = _localStream;
+
+  function updateVolumeIndicator(level) {
+    document.querySelectorAll('.vol-bar').forEach((bar, index) => {
+      if (index < level) bar.classList.add('active');
+      else bar.classList.remove('active');
+    });
+  }
+
+  function updateMicButtons(isOn) {
+    document.querySelectorAll('#micBtn, #micBtnGame').forEach(btn => {
+      btn.classList.remove('active-mic', 'inactive-mic');
+      btn.classList.add(isOn ? 'active-mic' : 'inactive-mic');
+    });
+    document.querySelectorAll('.mic-status').forEach(el => el.innerText = isOn ? '开' : '关');
+  }
+
+  function updateSpeakerButtons(isOn) {
+    document.querySelectorAll('#speakerBtn, #speakerBtnGame').forEach(btn => {
+      btn.classList.remove('active-speaker', 'inactive-speaker');
+      btn.classList.add(isOn ? 'active-speaker' : 'inactive-speaker');
+    });
+    document.querySelectorAll('.speaker-status').forEach(el => el.innerText = isOn ? '开' : '关');
+  }
+
+  async function toggleMic() {
+    const peer = SupabaseNetwork.getPeer();
+    if (!peer) {
+      showToast('请先创建或加入房间');
+      return;
+    }
+    if (!_isMicOn) {
+      try {
+        const rawStream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true,
+            sampleRate: 48000,
+            sampleSize: 16,
+            channelCount: 1
+          }
+        });
+
+        if (!audioContext) {
+          audioContext = new (window.AudioContext || window.webkitAudioContext)();
+          analyser = audioContext.createAnalyser();
+          analyser.fftSize = 256;
+          dataArray = new Uint8Array(analyser.frequencyBinCount);
+        }
+        if (audioContext.state === 'suspended') {
+          await audioContext.resume();
+        }
+
+        const source = audioContext.createMediaStreamSource(rawStream);
+        gainNode = audioContext.createGain();
+        gainNode.gain.value = MIC_GAIN;
+        destNode = audioContext.createMediaStreamDestination();
+        source.connect(gainNode);
+        gainNode.connect(analyser);
+        gainNode.connect(destNode);
+
+        audioSourceNode = source;
+        _processedStream = destNode.stream;
+        _localStream = rawStream;
+        window._localStream = _processedStream;
+
+        _isMicOn = true;
+        window._isMicOn = true;
+
+        updateMicButtons(true);
+
+        if (animationId) cancelAnimationFrame(animationId);
+        function detect() {
+          if (!_isMicOn) { updateVolumeIndicator(0); animationId = null; return; }
+          analyser.getByteFrequencyData(dataArray);
+          let sum = 0;
+          for (let i = 0; i < dataArray.length; i++) sum += dataArray[i];
+          let avg = sum / dataArray.length;
+          let level = 0;
+          if (avg > 10) level = 1;
+          if (avg > 30) level = 2;
+          if (avg > 60) level = 3;
+          if (avg > 100) level = 4;
+          if (avg > 150) level = 5;
+          updateVolumeIndicator(level);
+          animationId = requestAnimationFrame(detect);
+        }
+        detect();
+
+        showToast('🎤 麦克风已开启');
+        console.log('🎤 麦克风已开启，增益 ' + MIC_GAIN + 'x');
+
+        // 发起音频呼叫给所有 P2P 连接
+        const state = window.GAME;
+        if (state && state.allMembers) {
+          state.allMembers.forEach((member, userId) => {
+            if (userId !== state.myUserId && member.peerId) {
+              startCallToPeer(member.peerId);
+            }
+          });
+        }
+      } catch (err) {
+        console.error('获取麦克风失败:', err);
+        showToast('无法访问麦克风，请检查权限设置');
+      }
+    } else {
+      _isMicOn = false;
+      window._isMicOn = false;
+      updateMicButtons(false);
+      updateVolumeIndicator(0);
+      if (animationId) { cancelAnimationFrame(animationId); animationId = null; }
+
+      if (audioSourceNode) { try { audioSourceNode.disconnect(); } catch(e) {} audioSourceNode = null; }
+      if (gainNode) { try { gainNode.disconnect(); } catch(e) {} gainNode = null; }
+      if (destNode) { try { destNode.disconnect(); } catch(e) {} destNode = null; }
+      if (_localStream) { _localStream.getTracks().forEach(t => t.stop()); _localStream = null; }
+      if (_processedStream) { _processedStream.getTracks().forEach(t => t.stop()); _processedStream = null; }
+      window._localStream = null;
+
+      if (window._audioCalls) {
+        for (let [peerId, call] of window._audioCalls) { try { call.close(); } catch(e) {} }
+        window._audioCalls.clear();
+      }
+      if (window._remoteAudioElements) {
+        for (let [peerId, audio] of window._remoteAudioElements) {
+          audio.pause(); audio.srcObject = null; audio.remove();
+        }
+        window._remoteAudioElements.clear();
+      }
+      showToast('🎤 麦克风已关闭');
+    }
+  }
+
+  function toggleSpeaker() {
+    _isSpeakerOn = !_isSpeakerOn;
+    window._isSpeakerOn = _isSpeakerOn;
+    updateSpeakerButtons(_isSpeakerOn);
+
+    if (_isSpeakerOn) {
+      showToast('🔊 听筒已开启');
+      if (window._remoteAudioElements) {
+        for (let [peerId, audio] of window._remoteAudioElements) {
+          audio.muted = false;
+          audio.play().catch(() => {});
+        }
+      }
+    } else {
+      showToast('🔇 听筒已关闭');
+      if (window._remoteAudioElements) {
+        for (let [peerId, audio] of window._remoteAudioElements) {
+          audio.muted = true;
+          audio.pause();
+        }
+      }
+    }
+  }
+
+  // 复制 P2P 页面的语音辅助函数
+  window.startCallToPeer = function(peerId) {
+    const peer = SupabaseNetwork.getPeer();
+    if (!peer) return;
+    if (!_localStream) return;
+    if (!_isMicOn) return;
+    if (window._audioCalls && window._audioCalls.has(peerId)) return;
+
+    try {
+      const call = peer.call(peerId, _processedStream || _localStream);
+      call.on('stream', (remoteStream) => {
+        addRemoteAudio(peerId, remoteStream);
+      });
+      call.on('close', () => { removeRemoteAudio(peerId); });
+      if (!window._audioCalls) window._audioCalls = new Map();
+      window._audioCalls.set(peerId, call);
+    } catch (e) {
+      console.error('发起呼叫失败:', e);
+    }
+  };
+
+  window.addRemoteAudio = function(peerId, stream) {
+    if (!window._remoteAudioElements) window._remoteAudioElements = new Map();
+    if (window._remoteAudioElements.has(peerId)) {
+      const old = window._remoteAudioElements.get(peerId);
+      old.pause(); old.srcObject = null; old.remove();
+    }
+    const audio = document.createElement('audio');
+    audio.srcObject = stream;
+    audio.autoplay = true;
+    audio.muted = !_isSpeakerOn;
+    audio.style.display = 'none';
+    document.body.appendChild(audio);
+    if (_isSpeakerOn) {
+      audio.play().catch(() => {});
+    }
+    window._remoteAudioElements.set(peerId, audio);
+  };
+
+  window.removeRemoteAudio = function(peerId) {
+    if (window._remoteAudioElements && window._remoteAudioElements.has(peerId)) {
+      const audio = window._remoteAudioElements.get(peerId);
+      audio.pause(); audio.srcObject = null; audio.remove();
+      window._remoteAudioElements.delete(peerId);
+    }
+    if (window._audioCalls && window._audioCalls.has(peerId)) {
+      try { window._audioCalls.get(peerId).close(); } catch(e) {}
+      window._audioCalls.delete(peerId);
+    }
+  };
+
+  window.toggleMic = toggleMic;
+  window.toggleSpeaker = toggleSpeaker;
+
+  // ========== 事件绑定 ==========
   document.getElementById('createRoomBtn').onclick = () => {
     const context = buildContext();
     SupabaseNetwork.createRoom(context);
@@ -534,8 +844,23 @@
   (async function init() {
     SupabaseNetwork.createSupabaseClient();
     const context = buildContext();
-    await SupabaseNetwork.tryReconnect(context);
-    if (!window.GAME.roomId) {
+    const state = await SupabaseNetwork.tryReconnect(context);
+    if (state) {
+      document.getElementById('roomCodeDisplay').innerText = state.roomId;
+      document.getElementById('gameRoomCode').innerText = state.roomId;
+      if (state.gameStarted) {
+        document.getElementById('lobbyScreen').classList.add('hidden');
+        document.getElementById('gameScreen').classList.remove('hidden');
+        drawBoard();
+        window.UI.updateTurnDisplay(state.gameStarted, state.gameOver, state.winner, state.currentPlayer, state.mySeat);
+        window.UI.updateGameInfoPanel(state.lobbySeats, state.allMembers, state.mySeat, state.gameStarted, state.gameOver, state.isProMode);
+      } else {
+        document.getElementById('entryScreen').classList.add('hidden');
+        document.getElementById('lobbyScreen').classList.remove('hidden');
+        window.UI.updateLobbyUI(state.lobbySeats, state.isHost, state.roomGameMode);
+      }
+    } else {
+      document.getElementById('entryScreen').classList.remove('hidden');
       showToast('欢迎！请创建或加入房间');
     }
   })();
