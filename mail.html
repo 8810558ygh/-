@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>东南五子 · 邮件</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.min.js"></script>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="music-player.css">
+  <script src="audio.js"></script>
+  <script src="music-player.js"></script>
+  <style>
+    body { background: #2b1e0f; padding-top: 70px; color: #ecd9b4; }
+    .mail-container {
+      max-width: 820px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    .mail-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    .mail-header h2 {
+      color: #e9bc6e;
+      font-size: 1.8rem;
+      font-weight: 900;
+      letter-spacing: 2px;
+    }
+    .mail-header .badge {
+      background: #f5c542;
+      color: #1e160c;
+      padding: 2px 14px;
+      border-radius: 30px;
+      font-weight: bold;
+      font-size: 0.85rem;
+    }
+    .mail-list {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .mail-item {
+      background: rgba(35, 25, 15, 0.7);
+      backdrop-filter: blur(4px);
+      border-radius: 20px;
+      padding: 16px 20px;
+      border: 2px solid rgba(220, 180, 100, 0.25);
+      cursor: pointer;
+      transition: 0.2s;
+    }
+    .mail-item:hover {
+      border-color: #ebc282;
+      background: rgba(45, 33, 20, 0.8);
+    }
+    .mail-item.unread {
+      border-left: 4px solid #f5c542;
+    }
+    .mail-summary {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .mail-sender {
+      font-weight: bold;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .mail-sender .sender-icon.system {
+      color: #f5c542;
+    }
+    .mail-sender .sender-icon.user {
+      color: #6c9fd1;
+    }
+    .mail-sender .sender-name.system {
+      color: #f5c542;
+    }
+    .mail-sender .sender-name.user {
+      color: #6c9fd1;
+    }
+    .mail-subject {
+      flex: 1;
+      margin: 0 12px;
+      color: #ecd9b4;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .mail-time {
+      font-size: 0.8rem;
+      color: #a09070;
+      white-space: nowrap;
+    }
+    .mail-preview {
+      margin-top: 8px;
+      color: #c8b28a;
+      font-size: 0.9rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .mail-body {
+      display: none;
+      margin-top: 14px;
+      padding: 16px;
+      background: rgba(20, 15, 8, 0.6);
+      border-radius: 16px;
+      border: 1px solid #5e4a31;
+      color: #ecd9b4;
+      line-height: 1.7;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .mail-body.open {
+      display: block;
+    }
+    .mail-body .read-status {
+      font-size: 0.75rem;
+      color: #a09070;
+      margin-top: 8px;
+      text-align: right;
+    }
+    .mail-body .sender-type-tag {
+      display: inline-block;
+      font-size: 0.7rem;
+      padding: 2px 10px;
+      border-radius: 20px;
+      margin-bottom: 8px;
+    }
+    .mail-body .sender-type-tag.system {
+      background: rgba(245, 197, 66, 0.15);
+      color: #f5c542;
+      border: 1px solid rgba(245, 197, 66, 0.3);
+    }
+    .mail-body .sender-type-tag.user {
+      background: rgba(108, 159, 209, 0.15);
+      color: #6c9fd1;
+      border: 1px solid rgba(108, 159, 209, 0.3);
+    }
+
+    /* ===== 管理员面板 ===== */
+    .admin-panel {
+      margin-top: 40px;
+      background: rgba(35, 25, 15, 0.8);
+      border-radius: 24px;
+      padding: 24px;
+      border: 2px solid #f5c542;
+    }
+    .admin-panel .panel-title {
+      color: #f5c542;
+      font-size: 1.2rem;
+      font-weight: bold;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .admin-panel .panel-title .badge-admin {
+      font-size: 0.7rem;
+      background: #f5c542;
+      color: #1e160c;
+      padding: 2px 12px;
+      border-radius: 20px;
+      font-weight: bold;
+    }
+    .admin-panel label {
+      display: block;
+      margin: 12px 0 4px;
+      color: #bd9a60;
+      font-weight: bold;
+      font-size: 0.9rem;
+    }
+    .admin-panel input, 
+    .admin-panel textarea, 
+    .admin-panel select {
+      width: 100%;
+      padding: 10px 14px;
+      border-radius: 12px;
+      border: 1px solid #5e4a31;
+      background: #2f241b;
+      color: #ecd9b4;
+      font-size: 0.95rem;
+      font-family: inherit;
+    }
+    .admin-panel textarea { 
+      min-height: 100px; 
+      resize: vertical; 
+    }
+    .admin-panel .form-row {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    .admin-panel .form-row .form-group {
+      flex: 1;
+      min-width: 200px;
+    }
+    .admin-panel .send-btn {
+      margin-top: 16px;
+      background: linear-gradient(145deg, #f5c542, #d4a020);
+      border: none;
+      padding: 12px 32px;
+      border-radius: 30px;
+      font-weight: bold;
+      font-size: 1rem;
+      color: #1e160c;
+      cursor: pointer;
+      transition: 0.2s;
+      width: 100%;
+    }
+    .admin-panel .send-btn:hover { 
+      filter: brightness(1.1); 
+      transform: translateY(-1px);
+    }
+    .admin-panel .send-btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
+    .admin-panel .hint-text {
+      font-size: 0.75rem;
+      color: #a09070;
+      margin-top: 4px;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: #a09070;
+    }
+    .empty-state div:first-child { font-size: 3rem; margin-bottom: 12px; }
+
+    .top-bar {
+      position: fixed; top: 0; left: 0; right: 0; height: 60px;
+      background: rgba(25, 18, 10, 0.85);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(230, 190, 110, 0.3);
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 16px; z-index: 100;
+    }
+    .logo {
+      font-family: 'Orbitron', monospace;
+      font-size: 1.2rem; font-weight: 700; color: #e9bc6e;
+      letter-spacing: 2px;
+    }
+    .top-right {
+      display: flex; gap: 8px; align-items: center;
+    }
+    .top-btn {
+      background: rgba(200, 160, 100, 0.2);
+      border: 1px solid #e9bc6e;
+      border-radius: 40px;
+      padding: 4px 12px;
+      cursor: pointer;
+      font-size: 0.8rem;
+      color: #ecd9b4;
+      transition: 0.2s;
+      white-space: nowrap;
+    }
+    .top-btn:hover {
+      background: rgba(200, 160, 100, 0.35);
+    }
+    .toast {
+      position: fixed; bottom: 30px; left: 50%;
+      transform: translateX(-50%) translateY(100px);
+      background: rgba(30, 20, 10, 0.96);
+      backdrop-filter: blur(8px);
+      color: #f5c542;
+      border: 1px solid rgba(245, 197, 66, 0.5);
+      padding: 12px 28px; border-radius: 40px;
+      font-size: 0.9rem; z-index: 10000;
+      opacity: 0; transition: 0.3s; pointer-events: none; white-space: nowrap;
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    @media (max-width: 768px) {
+      .mail-header h2 { font-size: 1.4rem; }
+      .mail-item { padding: 12px 16px; }
+      .mail-subject { margin: 0 6px; font-size: 0.9rem; }
+      .mail-sender { font-size: 0.9rem; }
+      .admin-panel { padding: 16px; }
+      .admin-panel .form-row .form-group { min-width: 100%; }
+    }
+  </style>
+</head>
+<body>
+
+<div id="toast" class="toast"></div>
+
+<div class="top-bar">
+  <div class="logo">⚫ 东南五子 · 邮件 ⚪</div>
+  <div class="top-right">
+    <button class="top-btn" onclick="goToHall()">🏠 大厅</button>
+  </div>
+</div>
+
+<div class="mail-container">
+  <div class="mail-header">
+    <h2>✉️ 我的邮件</h2>
+    <span class="badge" id="unreadBadge">📬 加载中...</span>
+  </div>
+
+  <div id="mailList" class="mail-list">
+    <div class="empty-state">
+      <div>📭</div>
+      <div>暂无邮件</div>
+    </div>
+  </div>
+
+  <!-- ===== 管理员发送面板（默认隐藏） ===== -->
+  <div id="adminPanel" class="admin-panel hidden">
+    <div class="panel-title">
+      📨 发送系统邮件
+      <span class="badge-admin">管理员</span>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label for="recipientType">接收方式</label>
+        <select id="recipientType">
+          <option value="all">📢 全部用户（广播）</option>
+          <option value="user">👤 指定用户</option>
+        </select>
+      </div>
+      <div class="form-group" id="userIdGroup">
+        <label for="targetUserId">接收者用户 ID</label>
+        <input type="text" id="targetUserId" placeholder="输入用户的 UUID">
+        <div class="hint-text">在 Supabase → Authentication → Users 中查看用户 UUID</div>
+      </div>
+    </div>
+
+    <label for="senderName">发件人名称</label>
+    <input type="text" id="senderName" placeholder="如：系统管理员" value="系统通知">
+
+    <label for="mailSubject">主题</label>
+    <input type="text" id="mailSubject" placeholder="邮件主题">
+
+    <label for="mailContent">内容</label>
+    <textarea id="mailContent" placeholder="邮件正文..."></textarea>
+
+    <button class="send-btn" onclick="sendMail()">📤 发送邮件</button>
+  </div>
+</div>
+
+<script>
+  // ==================== Supabase 配置 ====================
+  const SUPABASE_URL = 'https://txgemtxikpieaqcohglr.supabase.co';
+  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR4Z2VtdHhpa3BpZWFxY29oZ2xyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk4MDY1NTIsImV4cCI6MjA5NTM4MjU1Mn0.I0PHUfWmiDpBnfjmTBJ1u6ybzZzhsTG0uaLbKBrcN1c';
+
+  let supabase = null;
+  let currentUser = null;
+  let isAdmin = false;
+
+  // ==================== 初始化 ====================
+  async function init() {
+    if (!window.supabase) {
+      showToast('Supabase 库加载失败');
+      return;
+    }
+    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      showToast('请先登录');
+      setTimeout(() => window.location.href = 'index.html', 1500);
+      return;
+    }
+    currentUser = session.user;
+
+    // 检查是否为管理员
+    await checkAdminStatus();
+
+    await loadMails();
+    subscribeNewMails();
+
+    if (typeof initAudio === 'function') initAudio();
+    if (typeof initMusicPlayer === 'function') initMusicPlayer();
+
+    // 接收方式切换
+    document.getElementById('recipientType').addEventListener('change', function() {
+      const show = this.value === 'user';
+      document.getElementById('userIdGroup').style.display = show ? 'block' : 'none';
+    });
+    document.getElementById('userIdGroup').style.display = 'none';
+  }
+
+  // ==================== 检查管理员状态 ====================
+  async function checkAdminStatus() {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('is_admin')
+      .eq('id', currentUser.id)
+      .single();
+
+    if (!error && data && data.is_admin === true) {
+      isAdmin = true;
+      document.getElementById('adminPanel').classList.remove('hidden');
+      console.log('✅ 管理员已识别');
+    } else {
+      isAdmin = false;
+      console.log('👤 普通用户');
+    }
+  }
+
+  // ==================== 加载邮件 ====================
+  async function loadMails() {
+    const { data, error } = await supabase
+      .from('mails')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      showToast('加载邮件失败: ' + error.message);
+      return;
+    }
+
+    renderMails(data || []);
+    updateUnreadBadge(data || []);
+  }
+
+  // ==================== 渲染邮件列表 ====================
+  function renderMails(mails) {
+    const container = document.getElementById('mailList');
+    if (mails.length === 0) {
+      container.innerHTML = `
+        <div class="empty-state">
+          <div>📭</div>
+          <div>暂无邮件</div>
+        </div>`;
+      return;
+    }
+
+    let html = '';
+    mails.forEach(mail => {
+      const time = new Date(mail.created_at);
+      const timeStr = `${time.getMonth()+1}月${time.getDate()}日 ${String(time.getHours()).padStart(2,'0')}:${String(time.getMinutes()).padStart(2,'0')}`;
+      const preview = mail.content.length > 50 ? mail.content.substring(0, 50) + '…' : mail.content;
+      const unreadClass = mail.read ? '' : 'unread';
+
+      const isSystem = mail.sender_type === 'system';
+      const senderIcon = isSystem ? '📢' : '👤';
+      const senderClass = isSystem ? 'system' : 'user';
+      const senderDisplay = isSystem ? '系统通知' : mail.sender;
+
+      html += `
+        <div class="mail-item ${unreadClass}" data-id="${mail.id}" onclick="toggleMail(this)">
+          <div class="mail-summary">
+            <span class="mail-sender">
+              <span class="sender-icon ${senderClass}">${senderIcon}</span>
+              <span class="sender-name ${senderClass}">${escapeHtml(senderDisplay)}</span>
+            </span>
+            <span class="mail-subject">${escapeHtml(mail.subject)}</span>
+            <span class="mail-time">${timeStr}</span>
+          </div>
+          <div class="mail-preview">${escapeHtml(preview)}</div>
+          <div class="mail-body" id="body-${mail.id}">
+            <span class="sender-type-tag ${senderClass}">${isSystem ? '📢 系统消息' : '👤 来自 ' + escapeHtml(mail.sender)}</span>
+            <div style="margin-top:8px;">${escapeHtml(mail.content)}</div>
+            <div class="read-status">${mail.read ? '✅ 已读' : '📬 未读'}</div>
+          </div>
+        </div>
+      `;
+    });
+    container.innerHTML = html;
+  }
+
+  // ==================== 展开/收起邮件 ====================
+  async function toggleMail(el) {
+    const body = el.querySelector('.mail-body');
+    const isOpen = body.classList.contains('open');
+    document.querySelectorAll('.mail-body.open').forEach(b => b.classList.remove('open'));
+    if (!isOpen) {
+      body.classList.add('open');
+      const id = el.dataset.id;
+      await markAsRead(id);
+      await updateUnreadBadgeFromDB();
+    }
+  }
+
+  async function markAsRead(mailId) {
+    const { error } = await supabase
+      .from('mails')
+      .update({ read: true })
+      .eq('id', mailId);
+    if (error) console.error('标记已读失败:', error);
+  }
+
+  async function updateUnreadBadgeFromDB() {
+    const { data, error } = await supabase
+      .from('mails')
+      .select('id', { count: 'exact', head: false })
+      .eq('read', false);
+    if (!error) updateUnreadBadge(data || []);
+  }
+
+  function updateUnreadBadge(mails) {
+    const count = (mails || []).filter(m => !m.read).length;
+    const badge = document.getElementById('unreadBadge');
+    if (count > 0) {
+      badge.innerText = `📬 ${count} 封未读`;
+      badge.style.background = '#f5c542';
+      badge.style.color = '#1e160c';
+    } else {
+      badge.innerText = '✅ 全部已读';
+      badge.style.background = 'rgba(74, 222, 128, 0.15)';
+      badge.style.color = '#4ade80';
+    }
+  }
+
+  // ==================== 实时订阅 ====================
+  function subscribeNewMails() {
+    if (!supabase || !currentUser) return;
+
+    supabase
+      .channel('mails-user-' + currentUser.id)
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'mails',
+        filter: `recipient_type=eq.user AND user_id=eq.${currentUser.id}`,
+      }, () => {
+        showToast('📨 收到新邮件！');
+        loadMails();
+      })
+      .subscribe();
+
+    supabase
+      .channel('mails-all')
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'mails',
+        filter: 'recipient_type=eq.all',
+      }, () => {
+        showToast('📢 收到新系统通知！');
+        loadMails();
+      })
+      .subscribe();
+  }
+
+  // ==================== 管理员发送邮件 ====================
+  async function sendMail() {
+    if (!isAdmin) {
+      showToast('⚠️ 你没有管理员权限');
+      return;
+    }
+
+    const type = document.getElementById('recipientType').value;
+    const targetUserId = document.getElementById('targetUserId').value.trim();
+    const sender = document.getElementById('senderName').value.trim() || '系统通知';
+    const subject = document.getElementById('mailSubject').value.trim();
+    const content = document.getElementById('mailContent').value.trim();
+
+    if (!subject || !content) {
+      showToast('请填写主题和内容');
+      return;
+    }
+    if (type === 'user' && !targetUserId) {
+      showToast('请填写接收者用户 ID');
+      return;
+    }
+
+    const btn = document.querySelector('.send-btn');
+    btn.disabled = true;
+    btn.innerText = '发送中...';
+
+    const payload = {
+      sender: sender,
+      sender_type: 'system',
+      subject: subject,
+      content: content,
+      recipient_type: type,
+      user_id: type === 'user' ? targetUserId : null
+    };
+
+    const { error } = await supabase
+      .from('mails')
+      .insert(payload);
+
+    btn.disabled = false;
+    btn.innerText = '📤 发送邮件';
+
+    if (error) {
+      showToast('❌ 发送失败: ' + error.message);
+    } else {
+      showToast('✅ 邮件发送成功！');
+      document.getElementById('mailSubject').value = '';
+      document.getElementById('mailContent').value = '';
+      document.getElementById('targetUserId').value = '';
+      loadMails();
+    }
+  }
+
+  // ==================== 工具函数 ====================
+  function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.innerText = text;
+    return div.innerHTML;
+  }
+
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.innerText = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 3000);
+  }
+
+  function goToHall() {
+    window.location.href = 'index.html';
+  }
+
+  document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>

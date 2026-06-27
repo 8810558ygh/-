@@ -44,7 +44,24 @@
       display: flex; gap: 8px; align-items: center;
     }
 
-    /* ===== 头像样式 ===== */
+    /* ===== 邮件按钮 ===== */
+    .mail-btn {
+      background: rgba(200, 160, 100, 0.2);
+      border: 1px solid #e9bc6e;
+      border-radius: 40px;
+      padding: 4px 10px;
+      cursor: pointer;
+      font-size: 1.1rem;
+      color: #ecd9b4;
+      transition: 0.2s;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+    }
+    .mail-btn:hover {
+      background: rgba(200, 160, 100, 0.35);
+    }
+
     .avatar-wrapper {
       position: relative;
       cursor: pointer;
@@ -307,7 +324,6 @@
       font-size: 1rem; font-weight: bold; cursor: pointer; color: #1e160c;
     }
 
-    /* ===== 头像放大弹窗 ===== */
     .avatar-preview-modal .modal-content {
       max-width: 340px;
       padding: 32px 24px;
@@ -360,7 +376,6 @@
       background: rgba(189, 154, 96, 0.15);
     }
 
-    /* ===== 个人中心弹窗 ===== */
     .profile-modal-content {
       background: #2c2419; border-radius: 40px;
       padding: 28px 24px; width: 100%; max-width: 340px;
@@ -397,7 +412,6 @@
       display: inline-block; margin-top: 8px;
     }
 
-    /* 头像裁剪弹窗 */
     .avatar-crop-modal .modal-content {
       max-width: 420px; padding: 20px;
     }
@@ -446,40 +460,13 @@
     @media (max-width: 768px) {
       .top-bar { height: 50px; padding: 0 10px; }
       .settings-btn { padding: 3px 8px; font-size: 0.7rem; }
+      .mail-btn { padding: 3px 8px; font-size: 1rem; }
       .conn-mode-badge { padding: 3px 6px; font-size: 0.6rem; }
       .avatar-img, .avatar-placeholder { width: 34px; height: 34px; }
       .avatar-nick { display: none; }
-      .login-card { padding: 24px 16px; border-radius: 32px; }
-      .login-title { font-size: 1.6rem; }
-      .login-subtitle { font-size: 0.85rem; margin-bottom: 18px; }
-      .auth-tab { font-size: 0.8rem; padding: 5px 12px; }
-      .auth-form input { font-size: 0.9rem; padding: 8px 12px; }
-      .auth-form button { font-size: 0.9rem; padding: 8px; }
-      .guest-btn { font-size: 0.85rem; padding: 8px; }
-      .hall-title { font-size: 1.8rem; letter-spacing: 2px; }
-      .hall-subtitle { font-size: 0.9rem; margin-top: -12px; }
-      .mode-cards { gap: 12px; padding: 0 4px; }
-      .mode-card { min-width: 120px; flex: 1 1 140px; padding: 18px 12px; border-radius: 20px; }
-      .mode-icon { width: 60px; height: 60px; font-size: 2.2rem; }
-      .mode-name { font-size: 1rem; }
-      .mode-desc { font-size: 0.7rem; }
-      .modal-content { padding: 20px 16px; border-radius: 28px; max-width: 100%; margin: 0 8px; }
-      .profile-modal-content { padding: 20px 16px; border-radius: 28px; max-width: 100%; margin: 0 8px; }
-      .modal-title { font-size: 1.1rem; margin-bottom: 16px; }
-      .setting-option { padding: 10px 12px; }
-      .setting-option-name { font-size: 0.85rem; }
-      .setting-option-desc { font-size: 0.7rem; }
-      .modal-close-btn { font-size: 0.9rem; padding: 8px 20px; }
-      .crop-container { width: 240px; height: 240px; }
-      .crop-overlay { width: 180px; height: 180px; }
-      .avatar-preview-large, .avatar-preview-placeholder-large { width: 100px; height: 100px; }
     }
     @media (max-width: 400px) {
-      .mode-card { flex: 1 1 100%; max-width: 100%; min-width: unset; }
-      .settings-btn { font-size: 0.6rem; padding: 2px 6px; }
-      .conn-mode-badge { font-size: 0.5rem; padding: 2px 4px; }
-      .login-title { font-size: 1.3rem; }
-      .hall-title { font-size: 1.5rem; }
+      .mail-btn { font-size: 0.9rem; padding: 2px 6px; }
     }
   </style>
 </head>
@@ -527,7 +514,6 @@
 <div id="hallScreen" class="hidden">
   <div class="top-bar">
     <div class="top-left">
-      <!-- ===== 头像区域 ===== -->
       <div class="avatar-wrapper" id="avatarWrapper" onclick="openAvatarPreview()" title="点击查看个人信息">
         <div class="avatar-placeholder" id="avatarPlaceholder">👤</div>
         <img class="avatar-img hidden" id="avatarImg" src="" alt="头像">
@@ -536,6 +522,7 @@
     </div>
     <div class="top-right">
       <div class="conn-mode-badge" id="connModeBadge">☁️ Supabase云端</div>
+      <a href="mail.html" class="mail-btn" title="邮件">✉️</a>
       <div class="settings-btn" onclick="openSettings()">⚙️ 设置</div>
     </div>
   </div>
@@ -603,7 +590,7 @@
   </div>
 </div>
 
-<!-- ===== 头像预览弹窗（点击头像弹出） ===== -->
+<!-- ===== 头像预览弹窗 ===== -->
 <div id="avatarPreviewModal" class="modal avatar-preview-modal">
   <div class="modal-content">
     <div class="avatar-preview-placeholder-large hidden" id="previewPlaceholderLarge">👤</div>
@@ -726,7 +713,6 @@
     }
   }
 
-  // ===== 头像预览弹窗 =====
   function openAvatarPreview() {
     const modal = document.getElementById('avatarPreviewModal');
     const placeholder = document.getElementById('previewPlaceholderLarge');
@@ -757,7 +743,6 @@
     openProfile();
   }
 
-  // ===== 从个人中心触发头像上传 =====
   function triggerAvatarUploadFromProfile() {
     closeProfile();
     if (!currentUser) {
@@ -938,13 +923,11 @@
     window.location.href = '五子棋.html?' + params.toString();
   }
 
-  // ===== 修复：根据联机模式跳转到对应文件 =====
   function enterOnlineGame() {
     let params = new URLSearchParams();
     params.set('nick', myNick);
     params.set('mode', gameMode);
     if (currentUser) params.set('uid', currentUser.id);
-    // 根据当前选择的联机模式跳转
     if (connMode === 'p2p') {
       window.location.href = '五子棋P2P.html?' + params.toString();
     } else {
@@ -961,6 +944,5 @@
 
   document.addEventListener('DOMContentLoaded', initSupabase);
 </script>
-
 </body>
 </html>
