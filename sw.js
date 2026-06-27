@@ -1,6 +1,6 @@
 // sw.js —— Service Worker 离线缓存
 
-const CACHE_NAME = 'gomoku-v3';
+const CACHE_NAME = 'gomoku-v4';
 
 // 所有需要离线缓存的文件列表
 const urlsToCache = [
@@ -19,6 +19,7 @@ const urlsToCache = [
   'online-p2p.js',
   'online-supabase.js',
   'audio.js',
+  'avatar.js',
   'music-player.css',
   'music-player.js',
   'audio/bg.mp3',
