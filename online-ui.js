@@ -1,4 +1,4 @@
-// online-ui.js —— 联机版通用 UI 渲染函数
+// online-ui.js —— 联机版通用 UI 渲染函数（支持头像）
 
 // ========== 设置全局引用，供 updateSeatUI 使用 ==========
 window._allMembers = new Map();
@@ -45,6 +45,7 @@ function updateLobbyUI(seats, isHost, gameMode) {
     if (modeEl) modeEl.innerText = '🎮 当前模式：' + modeText;
 }
 
+// ===== 核心：更新单个座位（支持头像图片） =====
 function updateSeatUI(seatId, occupantId) {
     let isBlack = seatId === 'black', isWhite = seatId === 'white';
     let isSpec = seatId.startsWith('spec-');
@@ -74,14 +75,23 @@ function updateSeatUI(seatId, occupantId) {
     if (occupantId) {
         let member = window._allMembers.get(occupantId);
         let displayName = member ? member.name : '棋客';
-        avatarDiv.innerText = displayName.charAt(0);
-        avatarDiv.className = 'seat-avatar ' + (isBlack ? 'black-avatar' : (isWhite ? 'white-avatar' : 'spec-avatar'));
+        let avatarUrl = member ? member.avatar : null;
+
+        // 头像显示：如果有头像URL则显示图片，否则显示首字母
+        if (avatarUrl) {
+            avatarDiv.innerHTML = `<img src="${avatarUrl}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">`;
+            avatarDiv.className = 'seat-avatar';
+        } else {
+            avatarDiv.innerText = displayName.charAt(0).toUpperCase();
+            avatarDiv.className = 'seat-avatar ' + (isBlack ? 'black-avatar' : (isWhite ? 'white-avatar' : 'spec-avatar'));
+        }
         nameSpan.innerText = displayName + (occupantId === myId ? ' (我)' : '');
         statusSpan.innerText = '已入座';
         cardDiv.classList.add('occupied-seat');
         if (occupantId === myId) cardDiv.classList.add('is-me-seat');
         else cardDiv.classList.remove('is-me-seat');
     } else {
+        // 空座位
         avatarDiv.innerText = '+';
         avatarDiv.className = 'seat-avatar empty-avatar';
         nameSpan.innerText = '空位';

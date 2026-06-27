@@ -206,6 +206,10 @@
 <script>
   const MIC_GAIN = 2.5;
 
+  // ===== 读取本地头像 URL 并暴露到全局 =====
+  let myAvatar = localStorage.getItem('goavatar') || null;
+  window.myAvatar = myAvatar;
+
   // ===================== Supabase 战绩配置 =====================
   const SUPABASE_URL = 'https://txgemtxikpieaqcohglr.supabase.co';
   const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR4Z2VtdHhpa3BpZWFxY29oZ2xyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk4MDY1NTIsImV4cCI6MjA5NTM4MjU1Mn0.I0PHUfWmiDpBnfjmTBJ1u6ybzZzhsTG0uaLbKBrcN1c';
@@ -957,7 +961,7 @@
   window.toggleSpeaker = toggleSpeaker;
   window.stopAllAudio = stopAllAudio;
 
-  // ========== 事件绑定（已移除 playBgMusic 调用） ==========
+  // ========== 事件绑定 ==========
   document.getElementById('createRoomBtn').onclick = () => {
     P2PNetwork.createRoom({
       state: window.GAME,
@@ -1012,8 +1016,8 @@
     updateEntryDisplay();
     window.UI.renderSpectators();
     await initSupabase();
-    console.log('🚀 P2P 联机已启动（高音质 + 麦克风增益）');
-    showToast(`欢迎！麦克风增益已预设为 ${MIC_GAIN}x`);
+    console.log('🚀 P2P 联机已启动（高音质 + 麦克风增益 + 头像支持）');
+    showToast(`欢迎！`);
   }
 
   if (document.readyState === 'loading') {

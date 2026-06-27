@@ -1,4 +1,4 @@
-// online-core.js —— 联机版核心逻辑
+// online-core.js —— 联机版核心逻辑（支持头像）
 
 // ========== 座位管理 ==========
 function getSeatOccupant(seatId, lobbySeats) {
@@ -97,9 +97,15 @@ function handleOnlineMessage(fromId, data, context) {
     if (data.type === 'joinRequest' && context.state.isHost) {
         let mem = context.state.allMembers.get(data.myId);
         if (!mem) {
-            context.state.allMembers.set(data.myId, { name: data.name, seat: null, online: true });
+            context.state.allMembers.set(data.myId, {
+                name: data.name,
+                seat: null,
+                online: true,
+                avatar: data.avatar || null
+            });
         } else {
             mem.name = data.name;
+            mem.avatar = data.avatar || null;
         }
 
         let existingSeat = context.state.allMembers.get(data.myId)?.seat;
@@ -113,7 +119,12 @@ function handleOnlineMessage(fromId, data, context) {
 
         let targetConn = context.state.connections.get(data.myId);
         if (targetConn && targetConn.conn.open) {
-            let memberList = Array.from(context.state.allMembers.entries()).map(([id, val]) => ({ id: id, name: val.name, seat: val.seat }));
+            let memberList = Array.from(context.state.allMembers.entries()).map(([id, val]) => ({
+                id: id,
+                name: val.name,
+                seat: val.seat,
+                avatar: val.avatar || null
+            }));
             targetConn.conn.send({
                 type: 'fullSync',
                 seats: context.state.lobbySeats,
@@ -128,7 +139,13 @@ function handleOnlineMessage(fromId, data, context) {
                 gameMode: context.state.roomGameMode
             });
         }
-        context.broadcastToAll({ type: 'memberUpdate', peerId: data.myId, name: data.name, seat: context.state.allMembers.get(data.myId)?.seat });
+        context.broadcastToAll({
+            type: 'memberUpdate',
+            peerId: data.myId,
+            name: data.name,
+            seat: context.state.allMembers.get(data.myId)?.seat,
+            avatar: data.avatar || null
+        });
         return;
     }
 
@@ -171,7 +188,14 @@ function handleOnlineMessage(fromId, data, context) {
         context.state.winner = data.winner;
         context.state.moveHistory = data.moveHistory || [];
         context.state.allMembers.clear();
-        data.members.forEach(m => context.state.allMembers.set(m.id, { name: m.name, seat: m.seat, online: true }));
+        data.members.forEach(m => {
+            context.state.allMembers.set(m.id, {
+                name: m.name,
+                seat: m.seat,
+                online: true,
+                avatar: m.avatar || null
+            });
+        });
         if (data.mySeat) context.state.mySeat = data.mySeat;
         if (data.gameMode) {
             context.state.roomGameMode = data.gameMode;
@@ -242,7 +266,14 @@ function handleOnlineMessage(fromId, data, context) {
         context.initBoardDataFn();
         context.state.lobbySeats = data.seats;
         context.state.allMembers.clear();
-        data.members.forEach(m => context.state.allMembers.set(m.id, { name: m.name, seat: m.seat, online: true }));
+        data.members.forEach(m => {
+            context.state.allMembers.set(m.id, {
+                name: m.name,
+                seat: m.seat,
+                online: true,
+                avatar: m.avatar || null
+            });
+        });
         let myMem = context.state.allMembers.get(context.state.myPeerId);
         if (myMem && myMem.seat) context.state.mySeat = myMem.seat;
 
@@ -293,9 +324,14 @@ function handleOnlineMessage(fromId, data, context) {
     }
 
     if (data.type === 'memberUpdate') {
-        context.state.allMembers.set(data.peerId, { name: data.name, seat: data.seat });
+        context.state.allMembers.set(data.peerId, {
+            name: data.name,
+            seat: data.seat,
+            avatar: data.avatar || null
+        });
         context.updateUIFns.updateLobbyUI();
         context.updateUIFns.updateGameInfoPanel();
+        return;
     }
 }
 
@@ -343,7 +379,6 @@ function tryPlaceOnline(row, col, context) {
     }
     if (context.state.board[row][col] !== 0) return false;
 
-    // 禁手检测（专业模式）
     if (context.state.isProMode && context.state.currentPlayer === 1) {
         context.state.board[row][col] = 1;
         let forbidden = Rules.checkForbidden(row, col, context.state.board, 15);
@@ -476,10 +511,16 @@ function exitToLobbyOnline(context) {
     }
 
     if (context.state.isHost) {
+        let memberList = Array.from(context.state.allMembers.entries()).map(([id, val]) => ({
+            id: id,
+            name: val.name,
+            seat: val.seat,
+            avatar: val.avatar || null
+        }));
         context.broadcastToAll({
             type: 'returnToLobby',
             seats: context.state.lobbySeats,
-            members: Array.from(context.state.allMembers.entries()).map(([id, val]) => ({ id: id, name: val.name, seat: val.seat }))
+            members: memberList
         });
     }
 

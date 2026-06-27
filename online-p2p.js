@@ -1,4 +1,4 @@
-// online-p2p.js —— PeerJS 网络层（安全高音质语音 + 完整日志）
+// online-p2p.js —— PeerJS 网络层（安全高音质语音 + 完整日志 + 头像支持）
 
 (function() {
     const ICE_SERVERS = [
@@ -74,7 +74,13 @@
     function setupJoinerConnection(context, conn) {
         conn.on('open', () => {
             window.GAME.connections.set(window.GAME.roomId, { conn: conn, lastSeen: Date.now() });
-            conn.send({ type: 'joinRequest', myId: window.GAME.myPeerId, name: context.myNick });
+            // 带上头像
+            conn.send({
+                type: 'joinRequest',
+                myId: window.GAME.myPeerId,
+                name: context.myNick,
+                avatar: window.myAvatar || null
+            });
             startHeartbeat(context);
             if (window._localStream && window._isMicOn) {
                 startCallToPeer(window.GAME.roomId);
@@ -109,7 +115,13 @@
         context.initBoardDataFn();
 
         assignedPeers.clear();
-        window.GAME.allMembers.set(window.GAME.myPeerId, { name: context.myNick, seat: null, online: true });
+        // 存储自己的信息时带上头像
+        window.GAME.allMembers.set(window.GAME.myPeerId, {
+            name: context.myNick,
+            seat: null,
+            online: true,
+            avatar: window.myAvatar || null
+        });
         window.GAME.lobbySeats.black = window.GAME.myPeerId;
         window.GAME.mySeat = 'black';
 
@@ -133,7 +145,7 @@
 
         peer.on('connection', (conn) => {
             let clientName = conn.metadata?.name || '棋客';
-            window.GAME.allMembers.set(conn.peer, { name: clientName, seat: null, online: true });
+            window.GAME.allMembers.set(conn.peer, { name: clientName, seat: null, online: true, avatar: null });
             window.GAME.connections.set(conn.peer, { conn: conn, lastSeen: Date.now() });
 
             conn.on('data', (d) => context.onReceiveMessageFn(conn.peer, d));
@@ -162,7 +174,12 @@
                     if (newSeat !== null) window.GAME.mySeat = newSeat;
                 }
 
-                let memberList = Array.from(window.GAME.allMembers.entries()).map(([id, val]) => ({ id: id, name: val.name, seat: val.seat }));
+                let memberList = Array.from(window.GAME.allMembers.entries()).map(([id, val]) => ({
+                    id: id,
+                    name: val.name,
+                    seat: val.seat,
+                    avatar: val.avatar || null
+                }));
                 conn.send({
                     type: 'fullSync',
                     seats: window.GAME.lobbySeats,
@@ -177,7 +194,13 @@
                     gameMode: window.GAME.roomGameMode
                 });
 
-                context.broadcastToAll({ type: 'memberUpdate', peerId: conn.peer, name: clientName, seat: window.GAME.allMembers.get(conn.peer)?.seat });
+                context.broadcastToAll({
+                    type: 'memberUpdate',
+                    peerId: conn.peer,
+                    name: clientName,
+                    seat: window.GAME.allMembers.get(conn.peer)?.seat,
+                    avatar: window.GAME.allMembers.get(conn.peer)?.avatar || null
+                });
                 window.UI.updateLobbyUI(window.GAME.lobbySeats, window.GAME.isHost, window.GAME.roomGameMode);
 
                 if (window._localStream && window._isMicOn) {
@@ -191,7 +214,13 @@
                 window.GAME.connections.delete(conn.peer);
                 assignedPeers.delete(conn.peer);
                 window.Core.clearAllSeatsOf(conn.peer, window.GAME.lobbySeats);
-                context.broadcastToAll({ type: 'memberUpdate', peerId: conn.peer, name: mem?.name || '棋客', seat: null });
+                context.broadcastToAll({
+                    type: 'memberUpdate',
+                    peerId: conn.peer,
+                    name: mem?.name || '棋客',
+                    seat: null,
+                    avatar: null
+                });
                 window.UI.updateLobbyUI(window.GAME.lobbySeats, window.GAME.isHost, window.GAME.roomGameMode);
                 if (window.GAME.gameStarted) {
                     window.UI.updateGameInfoPanel(window.GAME.lobbySeats, window.GAME.allMembers, window.GAME.mySeat, window.GAME.gameStarted, window.GAME.gameOver, window.GAME.isProMode);
@@ -200,11 +229,10 @@
             });
         });
 
-        // ---- 音频呼叫监听（安全应答，检查流有效性） ----
+        // ---- 音频呼叫监听 ----
         peer.on('call', (call) => {
             console.log('📞 收到来电:', call.peer, '本地流存在?', !!window._localStream);
             try {
-                // 检查本地流是否有效
                 if (window._localStream && typeof window._localStream.getTracks === 'function') {
                     call.answer(window._localStream);
                 } else {
@@ -219,7 +247,6 @@
                 });
             } catch (err) {
                 console.error('❌ 应答呼叫失败:', err);
-                // 如果带流应答失败，尝试无流应答
                 try { call.answer(); } catch(e) { console.error('❌ 无流应答也失败:', e); }
             }
         });
@@ -272,7 +299,6 @@
             setupJoinerConnection(context, conn);
         });
 
-        // ---- 音频呼叫监听（安全应答） ----
         peer.on('call', (call) => {
             console.log('📞 收到来电:', call.peer, '本地流存在?', !!window._localStream);
             try {
@@ -317,7 +343,6 @@
             console.warn('⚠️ 已存在对该 Peer 的呼叫:', peerId);
             return;
         }
-        // 检查流有效性
         if (typeof window._localStream.getTracks !== 'function') {
             console.error('❌ 本地流无效，无法发起呼叫');
             return;
@@ -363,7 +388,6 @@
                 console.log('✅ 自动播放成功:', peerId);
             }).catch(e => {
                 console.warn('❌ 自动播放失败:', peerId, e);
-                // 尝试在用户手势后播放（由 toggleSpeaker 负责）
             });
         }
         window._remoteAudioElements.set(peerId, audio);
