@@ -1036,7 +1036,6 @@ canvas {
 
 /* 手机横屏 & 小平板 */
 @media (max-width: 768px) {
-    /* 顶部栏缩小 */
     .top-bar {
         height: 50px;
         padding: 0 12px;
@@ -1059,7 +1058,6 @@ canvas {
         font-size: 0.7rem;
     }
 
-    /* 本地版 */
     h1 {
         font-size: 1.8rem;
         letter-spacing: 3px;
@@ -1099,7 +1097,6 @@ canvas {
         font-size: 1rem;
     }
 
-    /* AI版 & 联机版 - 关键：纵向布局 */
     #gameScreen {
         padding-top: 50px;
     }
@@ -1180,7 +1177,6 @@ canvas {
         font-size: 0.8rem;
     }
 
-    /* 大厅 */
     #lobbyScreen {
         padding-top: 70px;
         padding-bottom: 20px;
@@ -1230,7 +1226,6 @@ canvas {
         margin-top: 16px;
     }
 
-    /* 入口页 */
     #entryScreen {
         gap: 24px;
         padding: 16px;
@@ -1267,7 +1262,6 @@ canvas {
         font-size: 1.05rem;
     }
 
-    /* AI设置 */
     .setup-title {
         font-size: 2rem;
         margin-bottom: 24px;
@@ -1292,7 +1286,6 @@ canvas {
         font-size: 1.05rem;
     }
 
-    /* 弹窗 */
     .modal-content {
         padding: 24px 20px;
         border-radius: 32px;
@@ -1627,7 +1620,6 @@ canvas {
     border: 2px solid transparent;
 }
 
-/* 麦克风开启 */
 .voice-btn.active-mic {
     background: rgba(74, 222, 128, 0.2);
     color: #4ade80;
@@ -1635,14 +1627,12 @@ canvas {
     box-shadow: 0 0 15px rgba(74, 222, 128, 0.3);
 }
 
-/* 麦克风关闭 */
 .voice-btn.inactive-mic {
     background: rgba(248, 113, 113, 0.15);
     color: #f87171;
     border-color: #f87171;
 }
 
-/* 听筒开启 */
 .voice-btn.active-speaker {
     background: rgba(108, 159, 209, 0.2);
     color: #6c9fd1;
@@ -1650,7 +1640,6 @@ canvas {
     box-shadow: 0 0 15px rgba(108, 159, 209, 0.3);
 }
 
-/* 听筒关闭 */
 .voice-btn.inactive-speaker {
     background: rgba(160, 160, 160, 0.1);
     color: #a09070;
@@ -1686,14 +1675,12 @@ canvas {
     background: #ffffff;
     box-shadow: 0 0 10px rgba(255, 255, 255, 0.6), 0 0 20px rgba(255, 255, 255, 0.2);
 }
-/* 不同音量级别的高度——信号格效果：从低到高逐级递增 */
 .vol-bar[data-level="1"].active { height: 20%; }
 .vol-bar[data-level="2"].active { height: 40%; }
 .vol-bar[data-level="3"].active { height: 60%; }
 .vol-bar[data-level="4"].active { height: 80%; }
 .vol-bar[data-level="5"].active { height: 100%; }
 
-/* 聊天消息区域调整（与语音栏配合） */
 .chat-panel .chat-messages {
     flex: 1;
     overflow-y: auto;
@@ -1705,7 +1692,6 @@ canvas {
     max-height: none;
 }
 
-/* 在手机窄屏下保持语音栏整洁 */
 @media (max-width: 768px) {
     .voice-btn {
         padding: 4px 12px;

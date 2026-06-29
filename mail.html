@@ -9,142 +9,43 @@
   <link rel="stylesheet" href="music-player.css">
   <script src="audio.js"></script>
   <script src="music-player.js"></script>
+  <script src="friends.js"></script>
   <style>
     body { background: #2b1e0f; padding-top: 70px; color: #ecd9b4; }
-    .mail-container {
-      max-width: 820px;
-      margin: 0 auto;
-      padding: 20px;
-    }
-    .mail-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 24px;
-      flex-wrap: wrap;
-      gap: 12px;
-    }
-    .mail-header h2 {
-      color: #e9bc6e;
-      font-size: 1.8rem;
-      font-weight: 900;
-      letter-spacing: 2px;
-    }
-    .mail-header .badge {
-      background: #f5c542;
-      color: #1e160c;
-      padding: 2px 14px;
-      border-radius: 30px;
-      font-weight: bold;
-      font-size: 0.85rem;
-    }
-    .mail-list {
-      display: flex;
-      flex-direction: column;
-      gap: 14px;
-    }
-    .mail-item {
-      background: rgba(35, 25, 15, 0.7);
-      backdrop-filter: blur(4px);
-      border-radius: 20px;
-      padding: 16px 20px;
-      border: 2px solid rgba(220, 180, 100, 0.25);
-      cursor: pointer;
-      transition: 0.2s;
-    }
-    .mail-item:hover {
-      border-color: #ebc282;
-      background: rgba(45, 33, 20, 0.8);
-    }
-    .mail-item.unread {
-      border-left: 4px solid #f5c542;
-    }
-    .mail-summary {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: 8px;
-    }
-    .mail-sender {
-      font-weight: bold;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-    .mail-sender .sender-icon.system {
-      color: #f5c542;
-    }
-    .mail-sender .sender-icon.user {
-      color: #6c9fd1;
-    }
-    .mail-sender .sender-name.system {
-      color: #f5c542;
-    }
-    .mail-sender .sender-name.user {
-      color: #6c9fd1;
-    }
-    .mail-subject {
-      flex: 1;
-      margin: 0 12px;
-      color: #ecd9b4;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-    .mail-time {
-      font-size: 0.8rem;
-      color: #a09070;
-      white-space: nowrap;
-    }
-    .mail-preview {
-      margin-top: 8px;
-      color: #c8b28a;
-      font-size: 0.9rem;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-    .mail-body {
-      display: none;
-      margin-top: 14px;
-      padding: 16px;
-      background: rgba(20, 15, 8, 0.6);
-      border-radius: 16px;
-      border: 1px solid #5e4a31;
-      color: #ecd9b4;
-      line-height: 1.7;
-      white-space: pre-wrap;
-      word-break: break-word;
-    }
-    .mail-body.open {
-      display: block;
-    }
-    .mail-body .read-status {
-      font-size: 0.75rem;
-      color: #a09070;
-      margin-top: 8px;
-      text-align: right;
-    }
-    .mail-body .sender-type-tag {
-      display: inline-block;
-      font-size: 0.7rem;
-      padding: 2px 10px;
-      border-radius: 20px;
-      margin-bottom: 8px;
-    }
-    .mail-body .sender-type-tag.system {
-      background: rgba(245, 197, 66, 0.15);
-      color: #f5c542;
-      border: 1px solid rgba(245, 197, 66, 0.3);
-    }
-    .mail-body .sender-type-tag.user {
-      background: rgba(108, 159, 209, 0.15);
-      color: #6c9fd1;
-      border: 1px solid rgba(108, 159, 209, 0.3);
-    }
+    .mail-container { max-width: 820px; margin: 0 auto; padding: 20px; }
+    .mail-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-wrap: wrap; gap: 12px; }
+    .mail-header h2 { color: #e9bc6e; font-size: 1.8rem; font-weight: 900; letter-spacing: 2px; }
+    .mail-header .badge { background: #f5c542; color: #1e160c; padding: 2px 14px; border-radius: 30px; font-weight: bold; font-size: 0.85rem; }
+    .mail-list { display: flex; flex-direction: column; gap: 14px; }
+    .mail-item { background: rgba(35, 25, 15, 0.7); backdrop-filter: blur(4px); border-radius: 20px; padding: 16px 20px; border: 2px solid rgba(220, 180, 100, 0.25); transition: 0.2s; }
+    .mail-item:hover { border-color: #ebc282; background: rgba(45, 33, 20, 0.8); }
+    .mail-item.unread { border-left: 4px solid #f5c542; }
+    .mail-summary { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; cursor: pointer; }
+    .mail-sender { font-weight: bold; display: flex; align-items: center; gap: 6px; }
+    .mail-sender .sender-icon.system { color: #f5c542; }
+    .mail-sender .sender-icon.user { color: #6c9fd1; }
+    .mail-sender .sender-name.system { color: #f5c542; }
+    .mail-sender .sender-name.user { color: #6c9fd1; }
+    .mail-subject { flex: 1; margin: 0 12px; color: #ecd9b4; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .mail-time { font-size: 0.8rem; color: #a09070; white-space: nowrap; }
+    .mail-preview { margin-top: 8px; color: #c8b28a; font-size: 0.9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
+    .mail-body { display: none; margin-top: 14px; padding: 16px; background: rgba(20, 15, 8, 0.6); border-radius: 16px; border: 1px solid #5e4a31; color: #ecd9b4; line-height: 1.7; white-space: pre-wrap; word-break: break-word; }
+    .mail-body.open { display: block; }
+    .mail-body .read-status { font-size: 0.75rem; color: #a09070; margin-top: 8px; text-align: right; }
+    .mail-body .sender-type-tag { display: inline-block; font-size: 0.7rem; padding: 2px 10px; border-radius: 20px; margin-bottom: 8px; }
+    .mail-body .sender-type-tag.system { background: rgba(245, 197, 66, 0.15); color: #f5c542; border: 1px solid rgba(245, 197, 66, 0.3); }
+    .mail-body .sender-type-tag.user { background: rgba(108, 159, 209, 0.15); color: #6c9fd1; border: 1px solid rgba(108, 159, 209, 0.3); }
 
-    /* ===== 管理员面板 ===== */
+    .friend-request-actions { display: flex; gap: 12px; margin-top: 12px; flex-wrap: wrap; }
+    .friend-request-actions .btn-accept { background: linear-gradient(145deg, #4ade80, #22a65a); border: none; padding: 8px 24px; border-radius: 30px; font-weight: bold; color: #1e160c; cursor: pointer; font-size: 0.95rem; transition: 0.2s; }
+    .friend-request-actions .btn-accept:hover { transform: scale(1.02); filter: brightness(1.1); }
+    .friend-request-actions .btn-accept:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+    .friend-request-actions .btn-reject { background: transparent; border: 2px solid #f87171; color: #f87171; padding: 8px 24px; border-radius: 30px; font-weight: bold; cursor: pointer; font-size: 0.95rem; transition: 0.2s; }
+    .friend-request-actions .btn-reject:hover { background: rgba(248, 113, 113, 0.15); }
+    .friend-request-actions .btn-reject:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+    .friend-request-actions .btn-done { background: #5a4a3a; color: #a09070; padding: 8px 24px; border-radius: 30px; font-weight: bold; border: none; font-size: 0.95rem; cursor: default; }
+    .friend-request-actions .btn-accepted { background: rgba(74, 222, 128, 0.15); color: #4ade80; padding: 8px 24px; border-radius: 30px; font-weight: bold; border: 1px solid #4ade80; font-size: 0.95rem; cursor: default; }
+
     .admin-panel {
       margin-top: 40px;
       background: rgba(35, 25, 15, 0.8);
@@ -152,33 +53,10 @@
       padding: 24px;
       border: 2px solid #f5c542;
     }
-    .admin-panel .panel-title {
-      color: #f5c542;
-      font-size: 1.2rem;
-      font-weight: bold;
-      margin-bottom: 16px;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-    .admin-panel .panel-title .badge-admin {
-      font-size: 0.7rem;
-      background: #f5c542;
-      color: #1e160c;
-      padding: 2px 12px;
-      border-radius: 20px;
-      font-weight: bold;
-    }
-    .admin-panel label {
-      display: block;
-      margin: 12px 0 4px;
-      color: #bd9a60;
-      font-weight: bold;
-      font-size: 0.9rem;
-    }
-    .admin-panel input, 
-    .admin-panel textarea, 
-    .admin-panel select {
+    .admin-panel .panel-title { color: #f5c542; font-size: 1.2rem; font-weight: bold; margin-bottom: 16px; display: flex; align-items: center; gap: 10px; }
+    .admin-panel .panel-title .badge-admin { font-size: 0.7rem; background: #f5c542; color: #1e160c; padding: 2px 12px; border-radius: 20px; font-weight: bold; }
+    .admin-panel label { display: block; margin: 12px 0 4px; color: #bd9a60; font-weight: bold; font-size: 0.9rem; }
+    .admin-panel input, .admin-panel textarea, .admin-panel select {
       width: 100%;
       padding: 10px 14px;
       border-radius: 12px;
@@ -188,19 +66,9 @@
       font-size: 0.95rem;
       font-family: inherit;
     }
-    .admin-panel textarea { 
-      min-height: 100px; 
-      resize: vertical; 
-    }
-    .admin-panel .form-row {
-      display: flex;
-      gap: 16px;
-      flex-wrap: wrap;
-    }
-    .admin-panel .form-row .form-group {
-      flex: 1;
-      min-width: 200px;
-    }
+    .admin-panel textarea { min-height: 100px; resize: vertical; }
+    .admin-panel .form-row { display: flex; gap: 16px; flex-wrap: wrap; }
+    .admin-panel .form-row .form-group { flex: 1; min-width: 200px; }
     .admin-panel .send-btn {
       margin-top: 16px;
       background: linear-gradient(145deg, #f5c542, #d4a020);
@@ -214,26 +82,11 @@
       transition: 0.2s;
       width: 100%;
     }
-    .admin-panel .send-btn:hover { 
-      filter: brightness(1.1); 
-      transform: translateY(-1px);
-    }
-    .admin-panel .send-btn:disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
-      transform: none;
-    }
-    .admin-panel .hint-text {
-      font-size: 0.75rem;
-      color: #a09070;
-      margin-top: 4px;
-    }
+    .admin-panel .send-btn:hover { filter: brightness(1.1); transform: translateY(-1px); }
+    .admin-panel .send-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+    .admin-panel .hint-text { font-size: 0.75rem; color: #a09070; margin-top: 4px; }
 
-    .empty-state {
-      text-align: center;
-      padding: 60px 20px;
-      color: #a09070;
-    }
+    .empty-state { text-align: center; padding: 60px 20px; color: #a09070; }
     .empty-state div:first-child { font-size: 3rem; margin-bottom: 12px; }
 
     .top-bar {
@@ -244,28 +97,10 @@
       display: flex; align-items: center; justify-content: space-between;
       padding: 0 16px; z-index: 100;
     }
-    .logo {
-      font-family: 'Orbitron', monospace;
-      font-size: 1.2rem; font-weight: 700; color: #e9bc6e;
-      letter-spacing: 2px;
-    }
-    .top-right {
-      display: flex; gap: 8px; align-items: center;
-    }
-    .top-btn {
-      background: rgba(200, 160, 100, 0.2);
-      border: 1px solid #e9bc6e;
-      border-radius: 40px;
-      padding: 4px 12px;
-      cursor: pointer;
-      font-size: 0.8rem;
-      color: #ecd9b4;
-      transition: 0.2s;
-      white-space: nowrap;
-    }
-    .top-btn:hover {
-      background: rgba(200, 160, 100, 0.35);
-    }
+    .logo { font-family: 'Orbitron', monospace; font-size: 1.2rem; font-weight: 700; color: #e9bc6e; letter-spacing: 2px; }
+    .top-right { display: flex; gap: 8px; align-items: center; }
+    .top-btn { background: rgba(200, 160, 100, 0.2); border: 1px solid #e9bc6e; border-radius: 40px; padding: 4px 12px; cursor: pointer; font-size: 0.8rem; color: #ecd9b4; transition: 0.2s; white-space: nowrap; }
+    .top-btn:hover { background: rgba(200, 160, 100, 0.35); }
     .toast {
       position: fixed; bottom: 30px; left: 50%;
       transform: translateX(-50%) translateY(100px);
@@ -313,7 +148,7 @@
     </div>
   </div>
 
-  <!-- ===== 管理员发送面板（默认隐藏） ===== -->
+  <!-- 管理员面板 -->
   <div id="adminPanel" class="admin-panel hidden">
     <div class="panel-title">
       📨 发送系统邮件
@@ -328,10 +163,10 @@
           <option value="user">👤 指定用户</option>
         </select>
       </div>
-      <div class="form-group" id="userIdGroup">
+      <div class="form-group" id="userIdGroup" style="display:none;">
         <label for="targetUserId">接收者用户 ID</label>
         <input type="text" id="targetUserId" placeholder="输入用户的 UUID">
-        <div class="hint-text">在 Supabase → Authentication → Users 中查看用户 UUID</div>
+        <div class="hint-text">在 Supabase → Authentication → Users 中查看</div>
       </div>
     </div>
 
@@ -349,7 +184,6 @@
 </div>
 
 <script>
-  // ==================== Supabase 配置 ====================
   const SUPABASE_URL = 'https://txgemtxikpieaqcohglr.supabase.co';
   const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR4Z2VtdHhpa3BpZWFxY29oZ2xyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk4MDY1NTIsImV4cCI6MjA5NTM4MjU1Mn0.I0PHUfWmiDpBnfjmTBJ1u6ybzZzhsTG0uaLbKBrcN1c';
 
@@ -357,7 +191,6 @@
   let currentUser = null;
   let isAdmin = false;
 
-  // ==================== 初始化 ====================
   async function init() {
     if (!window.supabase) {
       showToast('Supabase 库加载失败');
@@ -373,24 +206,23 @@
     }
     currentUser = session.user;
 
-    // 检查是否为管理员
-    await checkAdminStatus();
+    // 初始化好友模块
+    if (typeof Friends !== 'undefined' && currentUser && supabase) {
+      Friends.init(supabase, currentUser);
+    }
 
+    await checkAdminStatus();
     await loadMails();
     subscribeNewMails();
 
     if (typeof initAudio === 'function') initAudio();
     if (typeof initMusicPlayer === 'function') initMusicPlayer();
 
-    // 接收方式切换
     document.getElementById('recipientType').addEventListener('change', function() {
-      const show = this.value === 'user';
-      document.getElementById('userIdGroup').style.display = show ? 'block' : 'none';
+      document.getElementById('userIdGroup').style.display = this.value === 'user' ? 'block' : 'none';
     });
-    document.getElementById('userIdGroup').style.display = 'none';
   }
 
-  // ==================== 检查管理员状态 ====================
   async function checkAdminStatus() {
     const { data, error } = await supabase
       .from('profiles')
@@ -408,7 +240,6 @@
     }
   }
 
-  // ==================== 加载邮件 ====================
   async function loadMails() {
     const { data, error } = await supabase
       .from('mails')
@@ -448,9 +279,11 @@
       const senderClass = isSystem ? 'system' : 'user';
       const senderDisplay = isSystem ? '系统通知' : mail.sender;
 
+      const isFriendRequest = mail.friend_request_id && mail.recipient_type === 'user';
+
       html += `
-        <div class="mail-item ${unreadClass}" data-id="${mail.id}" onclick="toggleMail(this)">
-          <div class="mail-summary">
+        <div class="mail-item ${unreadClass}" data-id="${mail.id}" data-friend-request="${mail.friend_request_id || ''}">
+          <div class="mail-summary" onclick="toggleMail(this.parentElement)">
             <span class="mail-sender">
               <span class="sender-icon ${senderClass}">${senderIcon}</span>
               <span class="sender-name ${senderClass}">${escapeHtml(senderDisplay)}</span>
@@ -458,16 +291,150 @@
             <span class="mail-subject">${escapeHtml(mail.subject)}</span>
             <span class="mail-time">${timeStr}</span>
           </div>
-          <div class="mail-preview">${escapeHtml(preview)}</div>
+          <div class="mail-preview" onclick="toggleMail(this.parentElement)">${escapeHtml(preview)}</div>
           <div class="mail-body" id="body-${mail.id}">
             <span class="sender-type-tag ${senderClass}">${isSystem ? '📢 系统消息' : '👤 来自 ' + escapeHtml(mail.sender)}</span>
             <div style="margin-top:8px;">${escapeHtml(mail.content)}</div>
+            ${isFriendRequest ? '<div id="friend-actions-' + mail.id + '" class="friend-request-actions"></div>' : ''}
             <div class="read-status">${mail.read ? '✅ 已读' : '📬 未读'}</div>
           </div>
         </div>
       `;
     });
     container.innerHTML = html;
+
+    // 所有邮件渲染完成后，异步加载好友申请状态
+    document.querySelectorAll('[data-friend-request]').forEach(el => {
+      const requestId = el.dataset.friendRequest;
+      const mailId = el.dataset.id;
+      if (requestId) {
+        loadFriendRequestStatus(requestId, mailId);
+      }
+    });
+  }
+
+  // ==================== 加载好友申请状态（显示按钮或已处理） ====================
+  async function loadFriendRequestStatus(requestId, mailId) {
+    if (!requestId || !supabase) return;
+
+    const container = document.getElementById('friend-actions-' + mailId);
+    if (!container) return;
+
+    try {
+      // 查询 friends 表，看这条申请的状态
+      const { data, error } = await supabase
+        .from('friends')
+        .select('id, status')
+        .eq('id', requestId)
+        .maybeSingle();
+
+      if (error) {
+        console.error('查询好友申请状态失败:', error);
+        container.innerHTML = `<span class="btn-done">⚠️ 加载失败</span>`;
+        return;
+      }
+
+      if (!data) {
+        // 记录不存在（已被删除）
+        container.innerHTML = `<span class="btn-done">⏳ 已过期</span>`;
+        // 同时标记邮件为已读
+        await supabase.from('mails').update({ read: true }).eq('id', mailId);
+        updateUnreadBadgeFromDB();
+        return;
+      }
+
+      if (data.status === 'accepted') {
+        // 已被同意
+        container.innerHTML = `<span class="btn-accepted">✅ 已同意</span>`;
+        // 标记邮件已读
+        await supabase.from('mails').update({ read: true }).eq('id', mailId);
+        updateUnreadBadgeFromDB();
+        // 刷新大厅好友列表
+        if (window.opener && window.opener.Friends) {
+          window.opener.Friends.loadFriendList();
+        }
+        return;
+      }
+
+      if (data.status === 'pending') {
+        // 仍待处理，显示按钮
+        container.innerHTML = `
+          <button class="btn-accept" onclick="handleFriendRequest('${requestId}', 'accept', '${mailId}')">✅ 同意</button>
+          <button class="btn-reject" onclick="handleFriendRequest('${requestId}', 'reject', '${mailId}')">❌ 拒绝</button>
+        `;
+        return;
+      }
+
+      // 其他状态
+      container.innerHTML = `<span class="btn-done">📌 状态: ${data.status}</span>`;
+
+    } catch (e) {
+      console.error('加载好友申请状态异常:', e);
+      container.innerHTML = `<span class="btn-done">⚠️ 加载失败</span>`;
+    }
+  }
+
+  // ==================== 处理好友申请 ====================
+  async function handleFriendRequest(requestId, action, mailId) {
+    if (!requestId) {
+      showToast('无效的好友申请');
+      return;
+    }
+
+    const container = document.getElementById('friend-actions-' + mailId);
+    if (container) {
+      const btns = container.querySelectorAll('button');
+      btns.forEach(b => b.disabled = true);
+    }
+
+    try {
+      if (action === 'accept') {
+        if (window.Friends && typeof window.Friends.acceptFriendRequest === 'function') {
+          const success = await window.Friends.acceptFriendRequest(requestId);
+          if (success) {
+            // 标记邮件已读
+            await supabase.from('mails').update({ read: true }).eq('id', mailId);
+            // 更新按钮为"已同意"
+            if (container) {
+              container.innerHTML = `<span class="btn-accepted">✅ 已同意</span>`;
+            }
+            // 更新未读计数
+            await updateUnreadBadgeFromDB();
+            showToast('✅ 已同意好友申请！');
+            
+            // 刷新大厅好友列表
+            if (window.opener && window.opener.Friends) {
+              window.opener.Friends.loadFriendList();
+              console.log('🔄 已通知大厅页面刷新好友列表');
+            }
+          }
+        } else {
+          showToast('好友模块未初始化，请刷新页面重试');
+        }
+      } else if (action === 'reject') {
+        if (window.Friends && typeof window.Friends.rejectFriendRequest === 'function') {
+          const success = await window.Friends.rejectFriendRequest(requestId);
+          if (success) {
+            // 删除邮件（或标记已读）
+            await supabase.from('mails').update({ read: true }).eq('id', mailId);
+            if (container) {
+              container.innerHTML = `<span class="btn-done">❌ 已拒绝</span>`;
+            }
+            await updateUnreadBadgeFromDB();
+            showToast('已拒绝好友申请');
+          }
+        } else {
+          showToast('好友模块未初始化，请刷新页面重试');
+        }
+      }
+    } catch (e) {
+      console.error('处理好友申请失败:', e);
+      showToast('操作失败，请重试');
+      if (container) {
+        const btns = container.querySelectorAll('button');
+        btns.forEach(b => b.disabled = false);
+      }
+    }
   }
 
   // ==================== 展开/收起邮件 ====================
@@ -477,18 +444,9 @@
     document.querySelectorAll('.mail-body.open').forEach(b => b.classList.remove('open'));
     if (!isOpen) {
       body.classList.add('open');
-      const id = el.dataset.id;
-      await markAsRead(id);
-      await updateUnreadBadgeFromDB();
+      // 注意：不再自动标记已读！由按钮点击或状态查询决定
+      // 只更新未读计数显示（但不改变 read 状态）
     }
-  }
-
-  async function markAsRead(mailId) {
-    const { error } = await supabase
-      .from('mails')
-      .update({ read: true })
-      .eq('id', mailId);
-    if (error) console.error('标记已读失败:', error);
   }
 
   async function updateUnreadBadgeFromDB() {
@@ -513,10 +471,8 @@
     }
   }
 
-  // ==================== 实时订阅 ====================
   function subscribeNewMails() {
     if (!supabase || !currentUser) return;
-
     supabase
       .channel('mails-user-' + currentUser.id)
       .on('postgres_changes', {
@@ -544,7 +500,6 @@
       .subscribe();
   }
 
-  // ==================== 管理员发送邮件 ====================
   async function sendMail() {
     if (!isAdmin) {
       showToast('⚠️ 你没有管理员权限');
@@ -579,9 +534,7 @@
       user_id: type === 'user' ? targetUserId : null
     };
 
-    const { error } = await supabase
-      .from('mails')
-      .insert(payload);
+    const { error } = await supabase.from('mails').insert(payload);
 
     btn.disabled = false;
     btn.innerText = '📤 发送邮件';
@@ -597,7 +550,6 @@
     }
   }
 
-  // ==================== 工具函数 ====================
   function escapeHtml(text) {
     if (!text) return '';
     const div = document.createElement('div');
