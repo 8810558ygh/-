@@ -1,4 +1,4 @@
-// online-p2p.js —— PeerJS 网络层（安全高音质语音 + 完整日志 + 头像支持）
+// online-p2p.js —— PeerJS 网络层（安全高音质语音 + 完整日志 + 头像支持 + 邀请功能）
 
 (function() {
     const ICE_SERVERS = [
@@ -141,6 +141,11 @@
             window.UI.updateConnUI(true);
             startHeartbeat(context);
             window.UI.updateLobbyUI(window.GAME.lobbySeats, window.GAME.isHost, window.GAME.roomGameMode);
+            
+            // ===== 新增：通知大厅页面当前房间码 =====
+            if (typeof window.Friends !== 'undefined' && window.Friends.setCurrentRoom) {
+                window.Friends.setCurrentRoom(roomId);
+            }
         });
 
         peer.on('connection', (conn) => {
@@ -297,6 +302,11 @@
                 serialization: 'json'
             });
             setupJoinerConnection(context, conn);
+            
+            // ===== 新增：通知大厅页面当前房间码 =====
+            if (typeof window.Friends !== 'undefined' && window.Friends.setCurrentRoom) {
+                window.Friends.setCurrentRoom(window.GAME.roomId);
+            }
         });
 
         peer.on('call', (call) => {

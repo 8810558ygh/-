@@ -255,7 +255,7 @@
     updateUnreadBadge(data || []);
   }
 
-  // ==================== 渲染邮件列表 ====================
+  // ==================== 渲染邮件列表（新增房间邀请检测） ====================
   function renderMails(mails) {
     const container = document.getElementById('mailList');
     if (mails.length === 0) {
@@ -280,6 +280,8 @@
       const senderDisplay = isSystem ? '系统通知' : mail.sender;
 
       const isFriendRequest = mail.friend_request_id && mail.recipient_type === 'user';
+      // ===== 新增：检测是否为房间邀请邮件 =====
+      const isRoomInvite = mail.subject && mail.subject.includes('邀请你加入游戏房间');
 
       html += `
         <div class="mail-item ${unreadClass}" data-id="${mail.id}" data-friend-request="${mail.friend_request_id || ''}">
@@ -296,6 +298,7 @@
             <span class="sender-type-tag ${senderClass}">${isSystem ? '📢 系统消息' : '👤 来自 ' + escapeHtml(mail.sender)}</span>
             <div style="margin-top:8px;">${escapeHtml(mail.content)}</div>
             ${isFriendRequest ? '<div id="friend-actions-' + mail.id + '" class="friend-request-actions"></div>' : ''}
+            ${isRoomInvite ? renderRoomInviteButtons(mail) : ''}
             <div class="read-status">${mail.read ? '✅ 已读' : '📬 未读'}</div>
           </div>
         </div>
@@ -303,7 +306,7 @@
     });
     container.innerHTML = html;
 
-    // 所有邮件渲染完成后，异步加载好友申请状态
+    // 加载好友申请状态（原有逻辑）
     document.querySelectorAll('[data-friend-request]').forEach(el => {
       const requestId = el.dataset.friendRequest;
       const mailId = el.dataset.id;
@@ -313,7 +316,7 @@
     });
   }
 
-  // ==================== 加载好友申请状态（显示按钮或已处理） ====================
+  // ==================== 加载好友申请状态 ====================
   async function loadFriendRequestStatus(requestId, mailId) {
     if (!requestId || !supabase) return;
 
@@ -321,7 +324,6 @@
     if (!container) return;
 
     try {
-      // 查询 friends 表，看这条申请的状态
       const { data, error } = await supabase
         .from('friends')
         .select('id, status')
@@ -335,21 +337,16 @@
       }
 
       if (!data) {
-        // 记录不存在（已被删除）
         container.innerHTML = `<span class="btn-done">⏳ 已过期</span>`;
-        // 同时标记邮件为已读
         await supabase.from('mails').update({ read: true }).eq('id', mailId);
         updateUnreadBadgeFromDB();
         return;
       }
 
       if (data.status === 'accepted') {
-        // 已被同意
         container.innerHTML = `<span class="btn-accepted">✅ 已同意</span>`;
-        // 标记邮件已读
         await supabase.from('mails').update({ read: true }).eq('id', mailId);
         updateUnreadBadgeFromDB();
-        // 刷新大厅好友列表
         if (window.opener && window.opener.Friends) {
           window.opener.Friends.loadFriendList();
         }
@@ -357,7 +354,6 @@
       }
 
       if (data.status === 'pending') {
-        // 仍待处理，显示按钮
         container.innerHTML = `
           <button class="btn-accept" onclick="handleFriendRequest('${requestId}', 'accept', '${mailId}')">✅ 同意</button>
           <button class="btn-reject" onclick="handleFriendRequest('${requestId}', 'reject', '${mailId}')">❌ 拒绝</button>
@@ -365,12 +361,90 @@
         return;
       }
 
-      // 其他状态
       container.innerHTML = `<span class="btn-done">📌 状态: ${data.status}</span>`;
 
     } catch (e) {
       console.error('加载好友申请状态异常:', e);
       container.innerHTML = `<span class="btn-done">⚠️ 加载失败</span>`;
+    }
+  }
+
+  // ==================== 渲染房间邀请按钮（新增） ====================
+  function renderRoomInviteButtons(mail) {
+    if (mail.read) {
+      return `<div class="friend-request-actions"><span class="btn-done">✅ 已处理</span></div>`;
+    }
+
+    const content = mail.content || '';
+    const roomCodeMatch = content.match(/房间码:\s*([A-Z0-9]{6})/i);
+    const roomCode = roomCodeMatch ? roomCodeMatch[1] : '';
+
+    if (!roomCode) {
+      return `<div class="friend-request-actions"><span class="btn-done">⚠️ 房间码无效</span></div>`;
+    }
+
+    return `
+      <div class="friend-request-actions">
+        <button class="btn-accept" onclick="handleRoomInvite('${roomCode}', 'accept', '${mail.id}')">🎮 同意加入</button>
+        <button class="btn-reject" onclick="handleRoomInvite('${roomCode}', 'reject', '${mail.id}')">❌ 拒绝</button>
+      </div>
+    `;
+  }
+
+  // ==================== 处理房间邀请（新增） ====================
+  async function handleRoomInvite(roomCode, action, mailId) {
+    if (!roomCode) {
+      showToast('房间码无效');
+      return;
+    }
+
+    const container = document.getElementById('friend-actions-' + mailId);
+    if (container) {
+      const btns = container.querySelectorAll('button');
+      btns.forEach(b => b.disabled = true);
+    }
+
+    try {
+      if (action === 'accept') {
+        // 标记邮件已读
+        await supabase.from('mails').update({ read: true }).eq('id', mailId);
+
+        // 保存房间码到 sessionStorage
+        sessionStorage.setItem('p2p_invite_room', roomCode);
+
+        showToast('✅ 正在加入房间...');
+
+        // 获取用户昵称
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('nickname')
+          .eq('id', currentUser.id)
+          .single();
+
+        // 跳转到 P2P 页面并自动加入
+        const params = new URLSearchParams();
+        params.set('join', roomCode);
+        params.set('uid', currentUser.id);
+        if (profile?.nickname) {
+          params.set('nick', profile.nickname);
+        }
+        window.location.href = '五子棋P2P.html?' + params.toString();
+
+      } else if (action === 'reject') {
+        await supabase.from('mails').update({ read: true }).eq('id', mailId);
+        if (container) {
+          container.innerHTML = `<span class="btn-done">❌ 已拒绝</span>`;
+        }
+        showToast('已拒绝邀请');
+        await updateUnreadBadgeFromDB();
+      }
+    } catch (e) {
+      console.error('处理房间邀请失败:', e);
+      showToast('操作失败，请重试');
+      if (container) {
+        const btns = container.querySelectorAll('button');
+        btns.forEach(b => b.disabled = false);
+      }
     }
   }
 
@@ -392,17 +466,12 @@
         if (window.Friends && typeof window.Friends.acceptFriendRequest === 'function') {
           const success = await window.Friends.acceptFriendRequest(requestId);
           if (success) {
-            // 标记邮件已读
             await supabase.from('mails').update({ read: true }).eq('id', mailId);
-            // 更新按钮为"已同意"
             if (container) {
               container.innerHTML = `<span class="btn-accepted">✅ 已同意</span>`;
             }
-            // 更新未读计数
             await updateUnreadBadgeFromDB();
             showToast('✅ 已同意好友申请！');
-            
-            // 刷新大厅好友列表
             if (window.opener && window.opener.Friends) {
               window.opener.Friends.loadFriendList();
               console.log('🔄 已通知大厅页面刷新好友列表');
@@ -415,7 +484,6 @@
         if (window.Friends && typeof window.Friends.rejectFriendRequest === 'function') {
           const success = await window.Friends.rejectFriendRequest(requestId);
           if (success) {
-            // 删除邮件（或标记已读）
             await supabase.from('mails').update({ read: true }).eq('id', mailId);
             if (container) {
               container.innerHTML = `<span class="btn-done">❌ 已拒绝</span>`;
@@ -444,8 +512,6 @@
     document.querySelectorAll('.mail-body.open').forEach(b => b.classList.remove('open'));
     if (!isOpen) {
       body.classList.add('open');
-      // 注意：不再自动标记已读！由按钮点击或状态查询决定
-      // 只更新未读计数显示（但不改变 read 状态）
     }
   }
 

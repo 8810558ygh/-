@@ -1,4 +1,4 @@
-// friends.js —— 好友系统完整模块（修复搜索和发送错误）
+// friends.js —— 好友系统完整模块（含P2P邀请功能）
 
 (function() {
     'use strict';
@@ -45,6 +45,9 @@
         friendDrawerOpen = !friendDrawerOpen;
         const drawer = document.getElementById('friendDrawer');
         if (drawer) drawer.classList.toggle('open', friendDrawerOpen);
+        if (friendDrawerOpen) {
+            loadFriendList();
+        }
     }
 
     function openAddFriend() {
@@ -61,7 +64,7 @@
         document.getElementById('addFriendModal').classList.remove('show');
     }
 
-    // ==================== 加载好友列表 ====================
+    // ==================== 加载好友列表（大厅抽屉） ====================
     async function loadFriendList() {
         if (!currentUser || !supabase) {
             console.warn('loadFriendList: 缺少 currentUser 或 supabase');
@@ -129,7 +132,124 @@
         container.innerHTML = html;
     }
 
-    // ==================== 搜索用户（增强错误处理） ====================
+    // ==================== 【新增】获取好友列表数据（用于P2P邀请弹窗） ====================
+    async function getFriendListData() {
+        if (!currentUser || !supabase) {
+            console.warn('getFriendListData: 缺少 currentUser 或 supabase');
+            return [];
+        }
+
+        const { data: friends, error } = await supabase
+            .from('friends')
+            .select('id, user_id, friend_id, status')
+            .or(`user_id.eq.${currentUser.id},friend_id.eq.${currentUser.id}`)
+            .eq('status', 'accepted');
+
+        if (error) {
+            console.error('获取好友列表失败:', error);
+            return [];
+        }
+
+        if (!friends || friends.length === 0) {
+            return [];
+        }
+
+        const friendIds = friends.map(f => f.user_id === currentUser.id ? f.friend_id : f.user_id);
+        const { data: profiles, error: pErr } = await supabase
+            .from('profiles')
+            .select('id, nickname, avatar_url, last_seen')
+            .in('id', friendIds);
+
+        if (pErr) {
+            console.error('获取好友资料失败:', pErr);
+            return [];
+        }
+
+        const profileMap = {};
+        profiles.forEach(p => profileMap[p.id] = p);
+
+        const result = friendIds.map(id => {
+            const p = profileMap[id];
+            if (!p) return null;
+            const isOnline = p.last_seen && (Date.now() - new Date(p.last_seen).getTime() < 120000);
+            return {
+                id: p.id,
+                nickname: p.nickname || '棋手',
+                avatar_url: p.avatar_url || '',
+                isOnline: isOnline
+            };
+        }).filter(Boolean);
+
+        return result;
+    }
+
+    // ==================== 【新增】邀请好友加入游戏（发送邮件） ====================
+    async function inviteToGame(friendId) {
+        if (!currentUser || !supabase) {
+            showToast('请先登录');
+            return;
+        }
+
+        const roomCode = sessionStorage.getItem('p2p_current_room');
+        if (!roomCode) {
+            showToast('请先创建或加入房间');
+            return;
+        }
+
+        const { data: myProfile, error: meErr } = await supabase
+            .from('profiles')
+            .select('nickname')
+            .eq('id', currentUser.id)
+            .single();
+
+        if (meErr) {
+            console.error('获取用户信息失败:', meErr);
+        }
+
+        const myName = myProfile?.nickname || '我';
+
+        const { data: friendProfile, error: frErr } = await supabase
+            .from('profiles')
+            .select('nickname')
+            .eq('id', friendId)
+            .single();
+
+        if (frErr) {
+            console.error('获取好友信息失败:', frErr);
+        }
+
+        const friendName = friendProfile?.nickname || '好友';
+
+        const { error: mailErr } = await supabase.from('mails').insert({
+            sender: '系统通知',
+            sender_type: 'system',
+            subject: `🎮 ${myName} 邀请你加入游戏房间`,
+            content: `${myName} 邀请你加入他的游戏房间。\n\n房间码: ${roomCode}\n\n点击下方按钮同意加入，即可自动进入房间。`,
+            recipient_type: 'user',
+            user_id: friendId,
+            read: false,
+            created_at: new Date().toISOString()
+        });
+
+        if (mailErr) {
+            console.error('发送邀请失败:', mailErr);
+            showToast('邀请失败: ' + mailErr.message);
+            return;
+        }
+
+        showToast(`📨 已发送房间邀请，请好友前往邮箱查收`);
+    }
+
+    // ==================== 【新增】设置当前房间码（P2P页面调用） ====================
+    function setCurrentRoom(roomCode) {
+        if (roomCode) {
+            sessionStorage.setItem('p2p_current_room', roomCode);
+        } else {
+            sessionStorage.removeItem('p2p_current_room');
+        }
+    }
+
+    // ==================== 搜索用户 ====================
     async function searchUsers(query) {
         const resultsContainer = document.getElementById('searchResults');
         if (!resultsContainer) return;
@@ -173,17 +293,12 @@
             }
 
             const ids = data.map(u => u.id);
-            const { data: existing, error: existErr } = await supabase
+            const { data: existing } = await supabase
                 .from('friends')
                 .select('user_id, friend_id, status')
                 .or(`user_id.eq.${currentUser.id},friend_id.eq.${currentUser.id}`)
                 .in('user_id', ids)
                 .in('friend_id', ids);
-
-            if (existErr) {
-                console.error('查询好友状态失败:', existErr);
-                // 继续显示结果，只是不显示状态
-            }
 
             const existingMap = {};
             if (existing) {
@@ -219,7 +334,7 @@
         }
     }
 
-    // ==================== 发送好友申请（增强错误日志） ====================
+    // ==================== 发送好友申请 ====================
     async function sendFriendRequest(friendId) {
         if (!currentUser || !supabase) {
             showToast('请先登录');
@@ -229,7 +344,6 @@
         console.log('发送好友申请给:', friendId);
 
         try {
-            // 检查是否已存在任何记录
             const { data: existing, error: existErr } = await supabase
                 .from('friends')
                 .select('id, status')
@@ -251,7 +365,6 @@
                 return;
             }
 
-            // 插入好友申请
             const { data: newFriend, error: insertErr } = await supabase
                 .from('friends')
                 .insert({ user_id: currentUser.id, friend_id: friendId, status: 'pending' })
@@ -266,7 +379,6 @@
 
             console.log('✅ 好友记录已插入:', newFriend);
 
-            // 获取双方昵称
             const { data: friendProfile, error: fpErr } = await supabase
                 .from('profiles')
                 .select('nickname')
@@ -275,7 +387,6 @@
 
             if (fpErr) {
                 console.error('获取好友昵称失败:', fpErr);
-                // 不阻塞流程，使用默认值
             }
 
             const { data: myProfile, error: mpErr } = await supabase
@@ -291,7 +402,6 @@
             const friendName = friendProfile?.nickname || '棋手';
             const myName = myProfile?.nickname || '我';
 
-            // 发送邮件
             const { error: mailErr } = await supabase.from('mails').insert({
                 sender: myName,
                 sender_type: 'user',
@@ -306,7 +416,6 @@
 
             if (mailErr) {
                 console.error('❌ 发送邮件失败:', mailErr);
-                // 回滚好友记录
                 await supabase.from('friends').delete().eq('id', newFriend.id);
                 showToast('申请失败（邮件发送失败）: ' + mailErr.message);
                 return;
@@ -433,6 +542,11 @@
         acceptFriendRequest: acceptFriendRequest,
         rejectFriendRequest: rejectFriendRequest,
         loadFriendList: loadFriendList,
+        // ===== 新增导出 =====
+        getFriendListData: getFriendListData,
+        inviteToGame: inviteToGame,
+        setCurrentRoom: setCurrentRoom,
+        // ===== 原有 =====
         updateLastSeen: updateLastSeen,
         chatWithFriend: chatWithFriend
     };

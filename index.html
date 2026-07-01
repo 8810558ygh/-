@@ -609,6 +609,7 @@
     document.getElementById('authForms').classList.remove('hidden');
     document.getElementById('loginEmail').value = '';
     document.getElementById('loginPassword').value = '';
+    document.getElementById('friendDrawer').style.display = 'none';
   }
 
   function showHallScreen() {
@@ -621,6 +622,7 @@
       document.getElementById('userEmailDisplay').innerText = currentUser.email;
     }
     
+ document.getElementById('friendDrawer').style.display = 'flex';
     // ===== 初始化好友系统 =====
     if (typeof Friends !== 'undefined' && currentUser && supabase) {
       Friends.init(supabase, currentUser);
