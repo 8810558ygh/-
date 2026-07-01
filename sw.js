@@ -1,6 +1,6 @@
 // sw.js —— Service Worker 离线缓存
 
-const CACHE_NAME = 'gomoku-v8';
+const CACHE_NAME = 'gomoku-v9';
 
 // 所有需要离线缓存的文件列表
 const urlsToCache = [

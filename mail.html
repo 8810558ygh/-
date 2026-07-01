@@ -16,6 +16,19 @@
     .mail-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-wrap: wrap; gap: 12px; }
     .mail-header h2 { color: #e9bc6e; font-size: 1.8rem; font-weight: 900; letter-spacing: 2px; }
     .mail-header .badge { background: #f5c542; color: #1e160c; padding: 2px 14px; border-radius: 30px; font-weight: bold; font-size: 0.85rem; }
+    .mail-actions { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+    .write-mail-btn {
+      background: rgba(74, 222, 128, 0.15);
+      border: 1px solid #4ade80;
+      border-radius: 40px;
+      padding: 6px 16px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      color: #4ade80;
+      transition: 0.2s;
+      font-family: inherit;
+    }
+    .write-mail-btn:hover { background: rgba(74, 222, 128, 0.3); }
     .mail-list { display: flex; flex-direction: column; gap: 14px; }
     .mail-item { background: rgba(35, 25, 15, 0.7); backdrop-filter: blur(4px); border-radius: 20px; padding: 16px 20px; border: 2px solid rgba(220, 180, 100, 0.25); transition: 0.2s; }
     .mail-item:hover { border-color: #ebc282; background: rgba(45, 33, 20, 0.8); }
@@ -46,6 +59,175 @@
     .friend-request-actions .btn-done { background: #5a4a3a; color: #a09070; padding: 8px 24px; border-radius: 30px; font-weight: bold; border: none; font-size: 0.95rem; cursor: default; }
     .friend-request-actions .btn-accepted { background: rgba(74, 222, 128, 0.15); color: #4ade80; padding: 8px 24px; border-radius: 30px; font-weight: bold; border: 1px solid #4ade80; font-size: 0.95rem; cursor: default; }
 
+    /* ===== 写邮件模态框（默认完全隐藏） ===== */
+    #writeMailModal {
+      visibility: hidden;
+      opacity: 0;
+      transition: opacity 0.3s ease, visibility 0.3s ease;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.75);
+      backdrop-filter: blur(8px);
+      z-index: 99999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      box-sizing: border-box;
+    }
+    #writeMailModal.show {
+      visibility: visible;
+      opacity: 1;
+    }
+    #writeMailModal .modal-content {
+      background: #2c2419;
+      border-radius: 32px;
+      padding: 28px 24px;
+      width: 100%;
+      max-width: 500px;
+      border: 2px solid #e9bc6e;
+      text-align: center;
+      max-height: 90vh;
+      overflow-y: auto;
+      position: relative;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.8);
+    }
+    #writeMailModal .modal-title {
+      color: #e9bc6e;
+      font-size: 1.3rem;
+      margin-bottom: 20px;
+    }
+    #writeMailModal label {
+      display: block;
+      margin: 12px 0 4px;
+      color: #bd9a60;
+      font-weight: bold;
+      font-size: 0.9rem;
+      text-align: left;
+    }
+    #writeMailModal input, #writeMailModal textarea {
+      width: 100%;
+      padding: 10px 14px;
+      border-radius: 12px;
+      border: 1px solid #5e4a31;
+      background: #2f241b;
+      color: #ecd9b4;
+      font-size: 0.95rem;
+      font-family: inherit;
+    }
+    #writeMailModal textarea {
+      min-height: 100px;
+      resize: vertical;
+    }
+    #writeMailModal .send-btn {
+      margin-top: 16px;
+      background: linear-gradient(145deg, #f5c542, #d4a020);
+      border: none;
+      padding: 12px 32px;
+      border-radius: 30px;
+      font-weight: bold;
+      font-size: 1rem;
+      color: #1e160c;
+      cursor: pointer;
+      transition: 0.2s;
+      width: 100%;
+    }
+    #writeMailModal .send-btn:hover {
+      filter: brightness(1.1);
+    }
+    #writeMailModal .send-btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+    #writeMailModal .modal-close-btn {
+      margin-top: 10px;
+      background: transparent;
+      border: 1px solid #bd9a60;
+      color: #bd9a60;
+      padding: 10px 28px;
+      border-radius: 40px;
+      font-size: 1rem;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    #writeMailModal .modal-close-btn:hover {
+      background: rgba(189, 154, 96, 0.15);
+    }
+
+    /* 好友选择列表 */
+    #friendSelectList {
+      max-height: 200px;
+      overflow-y: auto;
+      border: 1px solid #5e4a31;
+      border-radius: 12px;
+      padding: 4px;
+    }
+    #friendSelectList::-webkit-scrollbar {
+      width: 3px;
+    }
+    #friendSelectList::-webkit-scrollbar-thumb {
+      background: #5e4a31;
+      border-radius: 10px;
+    }
+
+    .friend-select-item {
+      display: flex;
+      align-items: center;
+      padding: 8px 12px;
+      gap: 12px;
+      cursor: pointer;
+      border-radius: 12px;
+      transition: background 0.15s;
+    }
+    .friend-select-item:hover {
+      background: rgba(200, 160, 100, 0.08);
+    }
+    .friend-select-item .avatar-small {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      object-fit: cover;
+      background: #3d2e1f;
+      flex-shrink: 0;
+    }
+    .friend-select-item .name {
+      color: #ecd9b4;
+      font-weight: 500;
+      flex: 1;
+    }
+    .friend-select-item .selected-mark {
+      color: #4ade80;
+      font-size: 1.2rem;
+    }
+    .friend-select-item.selected {
+      background: rgba(74, 222, 128, 0.08);
+      border: 1px solid rgba(74, 222, 128, 0.3);
+    }
+
+    /* 管理员收件人选项 */
+    .recipient-option {
+      background: transparent;
+      border: 1px solid #5e4a31;
+      border-radius: 20px;
+      padding: 6px 16px;
+      cursor: pointer;
+      color: #a09070;
+      font-family: inherit;
+      transition: 0.2s;
+    }
+    .recipient-option.active {
+      background: rgba(74, 222, 128, 0.2);
+      border-color: #4ade80;
+      color: #4ade80;
+    }
+    .recipient-option:hover {
+      border-color: #4ade80;
+    }
+
+    /* ===== 管理员面板 ===== */
     .admin-panel {
       margin-top: 40px;
       background: rgba(35, 25, 15, 0.8);
@@ -138,7 +320,10 @@
 <div class="mail-container">
   <div class="mail-header">
     <h2>✉️ 我的邮件</h2>
-    <span class="badge" id="unreadBadge">📬 加载中...</span>
+    <div class="mail-actions">
+      <button class="write-mail-btn" onclick="openWriteMail()">✏️ 写邮件</button>
+      <span class="badge" id="unreadBadge">📬 加载中...</span>
+    </div>
   </div>
 
   <div id="mailList" class="mail-list">
@@ -148,7 +333,29 @@
     </div>
   </div>
 
-  <!-- 管理员面板 -->
+  <!-- ===== 写邮件模态框（默认隐藏，点击按钮才弹出） ===== -->
+  <div id="writeMailModal">
+    <div class="modal-content">
+      <div class="modal-title">✏️ 写邮件</div>
+
+      <!-- 收件人选择区域（由 JS 动态填充） -->
+      <div id="recipientSection">
+        <label id="recipientLabel">收件人</label>
+        <div id="recipientContent"></div>
+      </div>
+
+      <label>主题</label>
+      <input type="text" id="mailSubjectInput" placeholder="邮件主题">
+
+      <label>内容</label>
+      <textarea id="mailContentInput" placeholder="邮件正文..."></textarea>
+
+      <button class="send-btn" onclick="sendUserMail()">📤 发送邮件</button>
+      <button class="modal-close-btn" onclick="closeWriteMail()">取消</button>
+    </div>
+  </div>
+
+  <!-- ===== 管理员面板（只有管理员可见） ===== -->
   <div id="adminPanel" class="admin-panel hidden">
     <div class="panel-title">
       📨 发送系统邮件
@@ -179,7 +386,7 @@
     <label for="mailContent">内容</label>
     <textarea id="mailContent" placeholder="邮件正文..."></textarea>
 
-    <button class="send-btn" onclick="sendMail()">📤 发送邮件</button>
+    <button class="send-btn" onclick="sendSystemMail()">📤 发送系统邮件</button>
   </div>
 </div>
 
@@ -190,6 +397,7 @@
   let supabase = null;
   let currentUser = null;
   let isAdmin = false;
+  let selectedRecipient = null;
 
   async function init() {
     if (!window.supabase) {
@@ -206,7 +414,6 @@
     }
     currentUser = session.user;
 
-    // 初始化好友模块
     if (typeof Friends !== 'undefined' && currentUser && supabase) {
       Friends.init(supabase, currentUser);
     }
@@ -255,7 +462,6 @@
     updateUnreadBadge(data || []);
   }
 
-  // ==================== 渲染邮件列表（新增房间邀请检测） ====================
   function renderMails(mails) {
     const container = document.getElementById('mailList');
     if (mails.length === 0) {
@@ -280,7 +486,6 @@
       const senderDisplay = isSystem ? '系统通知' : mail.sender;
 
       const isFriendRequest = mail.friend_request_id && mail.recipient_type === 'user';
-      // ===== 新增：检测是否为房间邀请邮件 =====
       const isRoomInvite = mail.subject && mail.subject.includes('邀请你加入游戏房间');
 
       html += `
@@ -306,7 +511,6 @@
     });
     container.innerHTML = html;
 
-    // 加载好友申请状态（原有逻辑）
     document.querySelectorAll('[data-friend-request]').forEach(el => {
       const requestId = el.dataset.friendRequest;
       const mailId = el.dataset.id;
@@ -316,10 +520,179 @@
     });
   }
 
-  // ==================== 加载好友申请状态 ====================
+  // ============================================================
+  // 写邮件功能（点击按钮弹出模态框）
+  // ============================================================
+
+  async function openWriteMail() {
+    const modal = document.getElementById('writeMailModal');
+    const container = document.getElementById('recipientContent');
+
+    // 清空表单
+    document.getElementById('mailSubjectInput').value = '';
+    document.getElementById('mailContentInput').value = '';
+    selectedRecipient = null;
+
+    // 显示模态框
+    modal.classList.add('show');
+
+    // 根据用户类型渲染收件人选择
+    if (isAdmin) {
+      document.getElementById('recipientLabel').textContent = '收件人';
+      container.innerHTML = `
+        <div style="display:flex; gap:10px; margin-bottom:10px; flex-wrap:wrap;">
+          <button class="recipient-option active" onclick="selectRecipientOption('all')">📢 全部用户</button>
+          <button class="recipient-option" onclick="selectRecipientOption('user')">👤 指定用户</button>
+        </div>
+        <div id="adminUserIdInput">
+          <input type="text" id="adminTargetUserId" placeholder="输入用户 UUID" style="width:100%;padding:10px 14px;border-radius:12px;border:1px solid #5e4a31;background:#2f241b;color:#ecd9b4;font-size:0.95rem;display:none;">
+          <div style="font-size:0.75rem;color:#a09070;margin-top:4px;display:none;" id="adminTargetHint">在 Supabase → Authentication → Users 中查看</div>
+        </div>
+      `;
+      selectRecipientOption('all');
+    } else {
+      document.getElementById('recipientLabel').textContent = '选择收件人（好友）';
+
+      if (typeof Friends === 'undefined' || !Friends.getFriendListData) {
+        container.innerHTML = '<div style="color:#f87171;padding:12px;">好友模块未初始化，请刷新页面</div>';
+        return;
+      }
+
+      const friends = await Friends.getFriendListData();
+      if (!friends || friends.length === 0) {
+        container.innerHTML = '<div style="color:#a09070;padding:12px;text-align:center;">暂无好友<br><span style="font-size:0.8rem;">请先添加好友</span></div>';
+        return;
+      }
+
+      let html = '<div id="friendSelectList">';
+      friends.forEach(f => {
+        const avatar = f.avatar_url || '';
+        const initial = f.nickname.charAt(0).toUpperCase();
+        html += `
+          <div class="friend-select-item" onclick="selectFriend('${f.id}')" data-friend-id="${f.id}">
+            ${avatar ? 
+              `<img class="avatar-small" src="${avatar}" alt="${f.nickname}">` :
+              `<div class="avatar-small" style="display:flex;align-items:center;justify-content:center;background:linear-gradient(145deg,#c89d60,#8f6a30);color:#1e160c;font-weight:bold;font-size:1rem;">${initial}</div>`
+            }
+            <span class="name">${escapeHtml(f.nickname)}</span>
+            <span class="selected-mark" style="display:none;">✅</span>
+          </div>
+        `;
+      });
+      html += '</div>';
+      container.innerHTML = html;
+    }
+  }
+
+  function selectRecipientOption(type) {
+    const allBtn = document.querySelectorAll('.recipient-option')[0];
+    const userBtn = document.querySelectorAll('.recipient-option')[1];
+    const input = document.getElementById('adminTargetUserId');
+    const hint = document.getElementById('adminTargetHint');
+
+    if (type === 'all') {
+      allBtn.classList.add('active');
+      userBtn.classList.remove('active');
+      if (input) input.style.display = 'none';
+      if (hint) hint.style.display = 'none';
+      selectedRecipient = 'all';
+    } else {
+      userBtn.classList.add('active');
+      allBtn.classList.remove('active');
+      if (input) input.style.display = 'block';
+      if (hint) hint.style.display = 'block';
+      selectedRecipient = 'user';
+      setTimeout(() => { if (input) input.focus(); }, 100);
+    }
+  }
+
+  function selectFriend(friendId) {
+    selectedRecipient = friendId;
+    document.querySelectorAll('.friend-select-item').forEach(el => {
+      const mark = el.querySelector('.selected-mark');
+      if (el.dataset.friendId === friendId) {
+        mark.style.display = 'inline';
+        el.classList.add('selected');
+      } else {
+        mark.style.display = 'none';
+        el.classList.remove('selected');
+      }
+    });
+  }
+
+  function closeWriteMail() {
+    document.getElementById('writeMailModal').classList.remove('show');
+  }
+
+  async function sendUserMail() {
+    const subject = document.getElementById('mailSubjectInput').value.trim();
+    const content = document.getElementById('mailContentInput').value.trim();
+
+    if (!subject || !content) {
+      showToast('请填写主题和内容');
+      return;
+    }
+
+    let targetUserId = null;
+    let recipientType = 'user';
+
+    if (isAdmin) {
+      if (selectedRecipient === 'all') {
+        recipientType = 'all';
+      } else if (selectedRecipient === 'user') {
+        const input = document.getElementById('adminTargetUserId');
+        targetUserId = input ? input.value.trim() : '';
+        if (!targetUserId) {
+          showToast('请填写用户 UUID');
+          return;
+        }
+      } else {
+        showToast('请选择收件方式');
+        return;
+      }
+    } else {
+      if (!selectedRecipient) {
+        showToast('请选择一位好友');
+        return;
+      }
+      targetUserId = selectedRecipient;
+    }
+
+    const btn = document.querySelector('#writeMailModal .send-btn');
+    btn.disabled = true;
+    btn.innerText = '发送中...';
+
+    const payload = {
+      sender: currentUser.email || '用户',
+      sender_type: isAdmin ? 'system' : 'user',
+      subject: subject,
+      content: content,
+      recipient_type: recipientType,
+      user_id: targetUserId,
+      read: false,
+      created_at: new Date().toISOString()
+    };
+
+    const { error } = await supabase.from('mails').insert(payload);
+
+    btn.disabled = false;
+    btn.innerText = '📤 发送邮件';
+
+    if (error) {
+      showToast('❌ 发送失败: ' + error.message);
+    } else {
+      showToast('✅ 邮件发送成功！');
+      closeWriteMail();
+      loadMails();
+    }
+  }
+
+  // ============================================================
+  // 好友申请相关
+  // ============================================================
+
   async function loadFriendRequestStatus(requestId, mailId) {
     if (!requestId || !supabase) return;
-
     const container = document.getElementById('friend-actions-' + mailId);
     if (!container) return;
 
@@ -331,7 +704,6 @@
         .maybeSingle();
 
       if (error) {
-        console.error('查询好友申请状态失败:', error);
         container.innerHTML = `<span class="btn-done">⚠️ 加载失败</span>`;
         return;
       }
@@ -362,14 +734,67 @@
       }
 
       container.innerHTML = `<span class="btn-done">📌 状态: ${data.status}</span>`;
-
     } catch (e) {
       console.error('加载好友申请状态异常:', e);
       container.innerHTML = `<span class="btn-done">⚠️ 加载失败</span>`;
     }
   }
 
-  // ==================== 渲染房间邀请按钮（新增） ====================
+  async function handleFriendRequest(requestId, action, mailId) {
+    if (!requestId) {
+      showToast('无效的好友申请');
+      return;
+    }
+
+    const container = document.getElementById('friend-actions-' + mailId);
+    if (container) {
+      const btns = container.querySelectorAll('button');
+      btns.forEach(b => b.disabled = true);
+    }
+
+    try {
+      if (action === 'accept') {
+        if (window.Friends && typeof window.Friends.acceptFriendRequest === 'function') {
+          const success = await window.Friends.acceptFriendRequest(requestId);
+          if (success) {
+            await supabase.from('mails').update({ read: true }).eq('id', mailId);
+            if (container) container.innerHTML = `<span class="btn-accepted">✅ 已同意</span>`;
+            await updateUnreadBadgeFromDB();
+            showToast('✅ 已同意好友申请！');
+            if (window.opener && window.opener.Friends) {
+              window.opener.Friends.loadFriendList();
+            }
+          }
+        } else {
+          showToast('好友模块未初始化，请刷新页面重试');
+        }
+      } else if (action === 'reject') {
+        if (window.Friends && typeof window.Friends.rejectFriendRequest === 'function') {
+          const success = await window.Friends.rejectFriendRequest(requestId);
+          if (success) {
+            await supabase.from('mails').update({ read: true }).eq('id', mailId);
+            if (container) container.innerHTML = `<span class="btn-done">❌ 已拒绝</span>`;
+            await updateUnreadBadgeFromDB();
+            showToast('已拒绝好友申请');
+          }
+        } else {
+          showToast('好友模块未初始化，请刷新页面重试');
+        }
+      }
+    } catch (e) {
+      console.error('处理好友申请失败:', e);
+      showToast('操作失败，请重试');
+      if (container) {
+        const btns = container.querySelectorAll('button');
+        btns.forEach(b => b.disabled = false);
+      }
+    }
+  }
+
+  // ============================================================
+  // 房间邀请相关
+  // ============================================================
+
   function renderRoomInviteButtons(mail) {
     if (mail.read) {
       return `<div class="friend-request-actions"><span class="btn-done">✅ 已处理</span></div>`;
@@ -391,7 +816,6 @@
     `;
   }
 
-  // ==================== 处理房间邀请（新增） ====================
   async function handleRoomInvite(roomCode, action, mailId) {
     if (!roomCode) {
       showToast('房间码无效');
@@ -406,35 +830,25 @@
 
     try {
       if (action === 'accept') {
-        // 标记邮件已读
         await supabase.from('mails').update({ read: true }).eq('id', mailId);
-
-        // 保存房间码到 sessionStorage
         sessionStorage.setItem('p2p_invite_room', roomCode);
-
         showToast('✅ 正在加入房间...');
 
-        // 获取用户昵称
         const { data: profile } = await supabase
           .from('profiles')
           .select('nickname')
           .eq('id', currentUser.id)
           .single();
 
-        // 跳转到 P2P 页面并自动加入
         const params = new URLSearchParams();
         params.set('join', roomCode);
         params.set('uid', currentUser.id);
-        if (profile?.nickname) {
-          params.set('nick', profile.nickname);
-        }
+        if (profile?.nickname) params.set('nick', profile.nickname);
         window.location.href = '五子棋P2P.html?' + params.toString();
 
       } else if (action === 'reject') {
         await supabase.from('mails').update({ read: true }).eq('id', mailId);
-        if (container) {
-          container.innerHTML = `<span class="btn-done">❌ 已拒绝</span>`;
-        }
+        if (container) container.innerHTML = `<span class="btn-done">❌ 已拒绝</span>`;
         showToast('已拒绝邀请');
         await updateUnreadBadgeFromDB();
       }
@@ -448,64 +862,64 @@
     }
   }
 
-  // ==================== 处理好友申请 ====================
-  async function handleFriendRequest(requestId, action, mailId) {
-    if (!requestId) {
-      showToast('无效的好友申请');
+  // ============================================================
+  // 系统邮件（管理员专用）
+  // ============================================================
+
+  async function sendSystemMail() {
+    if (!isAdmin) {
+      showToast('⚠️ 你没有管理员权限');
       return;
     }
 
-    const container = document.getElementById('friend-actions-' + mailId);
-    if (container) {
-      const btns = container.querySelectorAll('button');
-      btns.forEach(b => b.disabled = true);
+    const type = document.getElementById('recipientType').value;
+    const targetUserId = document.getElementById('targetUserId').value.trim();
+    const sender = document.getElementById('senderName').value.trim() || '系统通知';
+    const subject = document.getElementById('mailSubject').value.trim();
+    const content = document.getElementById('mailContent').value.trim();
+
+    if (!subject || !content) {
+      showToast('请填写主题和内容');
+      return;
+    }
+    if (type === 'user' && !targetUserId) {
+      showToast('请填写接收者用户 ID');
+      return;
     }
 
-    try {
-      if (action === 'accept') {
-        if (window.Friends && typeof window.Friends.acceptFriendRequest === 'function') {
-          const success = await window.Friends.acceptFriendRequest(requestId);
-          if (success) {
-            await supabase.from('mails').update({ read: true }).eq('id', mailId);
-            if (container) {
-              container.innerHTML = `<span class="btn-accepted">✅ 已同意</span>`;
-            }
-            await updateUnreadBadgeFromDB();
-            showToast('✅ 已同意好友申请！');
-            if (window.opener && window.opener.Friends) {
-              window.opener.Friends.loadFriendList();
-              console.log('🔄 已通知大厅页面刷新好友列表');
-            }
-          }
-        } else {
-          showToast('好友模块未初始化，请刷新页面重试');
-        }
-      } else if (action === 'reject') {
-        if (window.Friends && typeof window.Friends.rejectFriendRequest === 'function') {
-          const success = await window.Friends.rejectFriendRequest(requestId);
-          if (success) {
-            await supabase.from('mails').update({ read: true }).eq('id', mailId);
-            if (container) {
-              container.innerHTML = `<span class="btn-done">❌ 已拒绝</span>`;
-            }
-            await updateUnreadBadgeFromDB();
-            showToast('已拒绝好友申请');
-          }
-        } else {
-          showToast('好友模块未初始化，请刷新页面重试');
-        }
-      }
-    } catch (e) {
-      console.error('处理好友申请失败:', e);
-      showToast('操作失败，请重试');
-      if (container) {
-        const btns = container.querySelectorAll('button');
-        btns.forEach(b => b.disabled = false);
-      }
+    const btn = document.querySelector('.admin-panel .send-btn');
+    btn.disabled = true;
+    btn.innerText = '发送中...';
+
+    const payload = {
+      sender: sender,
+      sender_type: 'system',
+      subject: subject,
+      content: content,
+      recipient_type: type,
+      user_id: type === 'user' ? targetUserId : null
+    };
+
+    const { error } = await supabase.from('mails').insert(payload);
+
+    btn.disabled = false;
+    btn.innerText = '📤 发送系统邮件';
+
+    if (error) {
+      showToast('❌ 发送失败: ' + error.message);
+    } else {
+      showToast('✅ 邮件发送成功！');
+      document.getElementById('mailSubject').value = '';
+      document.getElementById('mailContent').value = '';
+      document.getElementById('targetUserId').value = '';
+      loadMails();
     }
   }
 
-  // ==================== 展开/收起邮件 ====================
+  // ============================================================
+  // 通用工具
+  // ============================================================
+
   async function toggleMail(el) {
     const body = el.querySelector('.mail-body');
     const isOpen = body.classList.contains('open');
@@ -564,56 +978,6 @@
         loadMails();
       })
       .subscribe();
-  }
-
-  async function sendMail() {
-    if (!isAdmin) {
-      showToast('⚠️ 你没有管理员权限');
-      return;
-    }
-
-    const type = document.getElementById('recipientType').value;
-    const targetUserId = document.getElementById('targetUserId').value.trim();
-    const sender = document.getElementById('senderName').value.trim() || '系统通知';
-    const subject = document.getElementById('mailSubject').value.trim();
-    const content = document.getElementById('mailContent').value.trim();
-
-    if (!subject || !content) {
-      showToast('请填写主题和内容');
-      return;
-    }
-    if (type === 'user' && !targetUserId) {
-      showToast('请填写接收者用户 ID');
-      return;
-    }
-
-    const btn = document.querySelector('.send-btn');
-    btn.disabled = true;
-    btn.innerText = '发送中...';
-
-    const payload = {
-      sender: sender,
-      sender_type: 'system',
-      subject: subject,
-      content: content,
-      recipient_type: type,
-      user_id: type === 'user' ? targetUserId : null
-    };
-
-    const { error } = await supabase.from('mails').insert(payload);
-
-    btn.disabled = false;
-    btn.innerText = '📤 发送邮件';
-
-    if (error) {
-      showToast('❌ 发送失败: ' + error.message);
-    } else {
-      showToast('✅ 邮件发送成功！');
-      document.getElementById('mailSubject').value = '';
-      document.getElementById('mailContent').value = '';
-      document.getElementById('targetUserId').value = '';
-      loadMails();
-    }
   }
 
   function escapeHtml(text) {
