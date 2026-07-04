@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>东南五子 · 皮肤中心</title>
+  <!-- 加载棋盘绘制引擎（用于预览） -->
+  <script src="goban.js"></script>
+  <script src="rules.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Noto Serif SC', '楷体', 'KaiTi', serif; }
+    body {
+      background: #2b1e0f;
+      background-image: radial-gradient(circle at 25% 40%, rgba(210, 160, 90, 0.08) 2%, transparent 2.5%);
+      background-size: 48px 48px;
+      min-height: 100vh;
+      color: #ecd9b4;
+      padding: 20px;
+    }
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      padding-top: 20px;
+    }
+    .page-title {
+      font-size: 2.2rem;
+      font-weight: 900;
+      color: #ebc282;
+      text-align: center;
+      margin-bottom: 6px;
+      text-shadow: 0 0 20px rgba(235, 194, 130, 0.3);
+    }
+    .subtitle {
+      text-align: center;
+      color: #a09070;
+      font-size: 0.95rem;
+      margin-bottom: 24px;
+    }
+
+    .tab-nav {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      margin-bottom: 28px;
+    }
+    .tab-btn {
+      background: rgba(200, 160, 100, 0.15);
+      border: 2px solid rgba(220, 180, 100, 0.3);
+      border-radius: 40px;
+      padding: 8px 28px;
+      font-size: 1rem;
+      font-weight: bold;
+      color: #bd9a60;
+      cursor: pointer;
+      transition: 0.2s;
+      font-family: inherit;
+    }
+    .tab-btn.active {
+      background: linear-gradient(145deg, #e6bb72, #b57c38);
+      border-color: #f5c542;
+      color: #1e160c;
+      box-shadow: 0 0 20px rgba(245, 197, 66, 0.3);
+    }
+    .tab-btn:hover:not(.active) {
+      border-color: #e9bc6e;
+      background: rgba(200, 160, 100, 0.25);
+    }
+
+    .tab-content {
+      display: none;
+    }
+    .tab-content.active {
+      display: block;
+    }
+
+    .skin-section {
+      background: rgba(35, 25, 15, 0.7);
+      backdrop-filter: blur(4px);
+      border-radius: 28px;
+      padding: 24px 20px;
+      border: 2px solid rgba(220, 180, 100, 0.25);
+    }
+    .section-title {
+      font-size: 1.3rem;
+      font-weight: bold;
+      color: #e9bc6e;
+      margin-bottom: 16px;
+      padding-left: 4px;
+    }
+    .skin-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 16px;
+    }
+    .skin-card {
+      background: rgba(20, 15, 8, 0.7);
+      border: 3px solid rgba(210, 170, 90, 0.3);
+      border-radius: 20px;
+      padding: 14px 10px 12px;
+      text-align: center;
+      cursor: pointer;
+      transition: 0.2s;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+    }
+    .skin-card:hover {
+      transform: translateY(-2px);
+      border-color: rgba(210, 170, 90, 0.6);
+    }
+    .skin-card.selected {
+      border-color: #f5c542;
+      background: rgba(245, 197, 66, 0.12);
+      box-shadow: 0 0 20px rgba(245, 197, 66, 0.25);
+    }
+    .skin-thumb {
+      width: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: rgba(0,0,0,0.1);
+      border-radius: 12px;
+      padding: 4px;
+    }
+    .stone-thumb-canvas {
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      display: block;
+    }
+    .board-thumb-canvas {
+      width: 100px;
+      height: 100px;
+      border-radius: 8px;
+      display: block;
+      background: transparent;
+    }
+    .skin-name {
+      font-weight: bold;
+      color: #ecd9b4;
+      font-size: 0.9rem;
+    }
+    .skin-check {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      border: 2px solid #bd9a60;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.7rem;
+      color: transparent;
+      transition: 0.2s;
+      flex-shrink: 0;
+    }
+    .skin-card.selected .skin-check {
+      background: #f5c542;
+      border-color: #f5c542;
+      color: #1e160c;
+    }
+    .skin-card.selected .skin-check::after {
+      content: '✓';
+      font-weight: bold;
+    }
+
+    .back-btn {
+      display: block;
+      width: fit-content;
+      margin: 24px auto 0;
+      background: linear-gradient(145deg, #e6bb72, #b57c38);
+      border: none;
+      padding: 10px 32px;
+      border-radius: 40px;
+      font-size: 1rem;
+      font-weight: bold;
+      color: #1e160c;
+      cursor: pointer;
+      transition: 0.2s;
+      text-decoration: none;
+      text-align: center;
+    }
+    .back-btn:hover {
+      filter: brightness(1.1);
+      transform: scale(1.02);
+    }
+
+    .toast {
+      position: fixed;
+      bottom: 30px;
+      left: 50%;
+      transform: translateX(-50%) translateY(100px);
+      background: rgba(30, 20, 10, 0.96);
+      backdrop-filter: blur(8px);
+      color: #f5c542;
+      border: 1px solid rgba(245, 197, 66, 0.5);
+      padding: 12px 28px;
+      border-radius: 40px;
+      font-size: 0.9rem;
+      z-index: 10000;
+      opacity: 0;
+      transition: 0.3s;
+      pointer-events: none;
+      white-space: nowrap;
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    /* ===== 预览模态框 ===== */
+    .modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.8);
+      backdrop-filter: blur(10px);
+      z-index: 9999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      visibility: hidden;
+      opacity: 0;
+      transition: opacity 0.25s ease, visibility 0.25s ease;
+      padding: 20px;
+    }
+    .modal.show {
+      visibility: visible;
+      opacity: 1;
+    }
+    .modal-content {
+      background: #2c2419;
+      border-radius: 32px;
+      padding: 28px 24px 24px;
+      max-width: 560px;
+      width: 100%;
+      border: 2px solid #e9bc6e;
+      text-align: center;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.8);
+      max-height: 95vh;
+      overflow-y: auto;
+    }
+    .modal-title {
+      color: #e9bc6e;
+      font-size: 1.4rem;
+      margin-bottom: 16px;
+      font-weight: bold;
+    }
+    .modal-canvas-wrap {
+      background: #1a120a;
+      border-radius: 16px;
+      padding: 8px;
+      margin-bottom: 16px;
+      border: 1px solid #5e4a31;
+    }
+    #previewCanvas {
+      width: 100%;
+      height: auto;
+      display: block;
+      border-radius: 10px;
+      background: transparent;
+    }
+    .modal-actions {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    .modal-actions button {
+      padding: 10px 28px;
+      border-radius: 40px;
+      border: none;
+      font-weight: bold;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: 0.2s;
+      font-family: inherit;
+    }
+    .modal-actions .apply-btn {
+      background: linear-gradient(145deg, #e6bb72, #b57c38);
+      color: #1e160c;
+    }
+    .modal-actions .apply-btn:hover:not(:disabled) {
+      filter: brightness(1.1);
+      transform: scale(1.02);
+    }
+    .modal-actions .apply-btn:disabled {
+      opacity: 0.6;
+      cursor: default;
+      transform: none;
+    }
+    .modal-actions .cancel-btn {
+      background: transparent;
+      border: 1px solid #bd9a60;
+      color: #bd9a60;
+    }
+    .modal-actions .cancel-btn:hover {
+      background: rgba(189, 154, 96, 0.15);
+    }
+
+    /* 响应式 */
+    @media (max-width: 640px) {
+      .skin-grid {
+        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+        gap: 12px;
+      }
+      .board-thumb-canvas {
+        width: 80px;
+        height: 80px;
+      }
+      .stone-thumb-canvas {
+        width: 50px;
+        height: 50px;
+      }
+      .tab-btn {
+        padding: 6px 16px;
+        font-size: 0.85rem;
+      }
+    }
+    @media (max-width: 480px) {
+      .skin-grid {
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+      }
+      .board-thumb-canvas {
+        width: 70px;
+        height: 70px;
+      }
+      .stone-thumb-canvas {
+        width: 45px;
+        height: 45px;
+      }
+      .page-title {
+        font-size: 1.6rem;
+      }
+      .skin-section {
+        padding: 14px 10px;
+      }
+      .skin-card {
+        padding: 10px 6px 8px;
+      }
+      .skin-name {
+        font-size: 0.8rem;
+      }
+      .modal-content {
+        padding: 20px 16px;
+      }
+      .modal-actions button {
+        padding: 8px 18px;
+        font-size: 0.9rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="toast" class="toast"></div>
+  <div class="container">
+    <div class="page-title">🎨 皮肤中心</div>
+    <div class="subtitle">点击皮肤卡片预览 · 经典与小狗狗主题</div>
+
+    <div class="tab-nav">
+      <button class="tab-btn active" data-tab="stone">⚫ 棋子皮肤</button>
+      <button class="tab-btn" data-tab="board">🖼️ 棋盘皮肤</button>
+    </div>
+
+    <div id="tabStone" class="tab-content active">
+      <div class="skin-section">
+        <div class="section-title">⚫ 棋子皮肤</div>
+        <div id="stoneSkinGrid" class="skin-grid"></div>
+      </div>
+    </div>
+
+    <div id="tabBoard" class="tab-content">
+      <div class="skin-section">
+        <div class="section-title">🖼️ 棋盘皮肤</div>
+        <div id="boardSkinGrid" class="skin-grid"></div>
+      </div>
+    </div>
+
+    <a href="index.html" class="back-btn">🏠 返回大厅</a>
+  </div>
+
+  <!-- ===== 预览模态框 ===== -->
+  <div id="previewModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-title" id="previewTitle">预览</div>
+      <div class="modal-canvas-wrap">
+        <canvas id="previewCanvas" width="480" height="480"></canvas>
+      </div>
+      <div class="modal-actions">
+        <button class="apply-btn" id="previewApplyBtn" onclick="SkinUI.applyPreviewSkin()">选择此皮肤</button>
+        <button class="cancel-btn" onclick="SkinUI.closePreview()">取消</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="skins.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      // Tab 切换
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+          document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+          this.classList.add('active');
+          const tab = this.dataset.tab;
+          document.getElementById('tabStone').classList.toggle('active', tab === 'stone');
+          document.getElementById('tabBoard').classList.toggle('active', tab === 'board');
+        });
+      });
+
+      // 初始化皮肤UI
+      if (typeof SkinUI !== 'undefined') {
+        SkinUI.init();
+      } else {
+        document.getElementById('stoneSkinGrid').innerHTML =
+          '<div style="color:#f87171;padding:20px;text-align:center;">皮肤模块加载失败，请刷新页面</div>';
+        document.getElementById('boardSkinGrid').innerHTML =
+          '<div style="color:#f87171;padding:20px;text-align:center;">皮肤模块加载失败，请刷新页面</div>';
+      }
+    });
+  </script>
+</body>
+</html>

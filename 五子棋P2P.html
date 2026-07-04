@@ -16,9 +16,9 @@
   <link rel="stylesheet" href="music-player.css">
   <script src="music-player.js"></script>
   <script src="friends.js"></script>
+  <script src="skins.js"></script>
   <base target="_blank">
   <style>
-    /* ===== 原有样式 ===== */
     #gameScreen { padding-top: 80px; }
     .board-wrap { max-width: 820px; }
     .turn-reminder { font-size: 2.0rem; padding: 12px 24px; }
@@ -37,7 +37,6 @@
       background: rgba(200, 160, 100, 0.35);
     }
 
-    /* ===== 顶部栏邀请按钮 ===== */
     .invite-top-btn {
       background: rgba(74, 222, 128, 0.15);
       border: 1px solid #4ade80;
@@ -84,7 +83,6 @@
     .vol-bar[data-level="4"].active { height: 80%; }
     .vol-bar[data-level="5"].active { height: 100%; }
 
-    /* ===== 邀请好友弹窗内容样式 ===== */
     .invite-friend-item {
       display: flex;
       align-items: center;
@@ -138,7 +136,6 @@
       font-size: 0.9rem;
     }
 
-    /* ===== 强制覆盖邀请弹窗样式，确保全屏居中 ===== */
     #inviteFriendModal {
       position: fixed;
       top: 0;
@@ -214,7 +211,6 @@
     <div class="personal-btn" id="personalCenterBtn">🧑 个人中心</div>
     <div class="conn-status"><span class="conn-dot conn-connecting" id="statusDot"></span><span id="statusText">未连接</span></div>
     <div class="room-code-badge" id="roomCodeDisplay" onclick="copyRoomCode()">----</div>
-    <!-- 邀请好友按钮 -->
     <button class="invite-top-btn" onclick="openInviteFriendModal()">📨 邀请好友</button>
     <button class="top-btn" onclick="goToHall()">🏠 大厅</button>
   </div>
@@ -260,6 +256,7 @@
   </div>
 
   <div class="lobby-layout">
+    <!-- 黑棋方列 -->
     <div class="lobby-column col-black">
       <div class="lobby-column-header">⚫ 黑棋方</div>
       <div class="seat-card" id="seatBlackCard" onclick="requestSeat('black')">
@@ -267,7 +264,15 @@
         <div class="seat-name" id="blackName">空位</div>
         <div class="seat-status" id="blackStatus">点击入座</div>
       </div>
+      <!-- 黑方教练 -->
+      <div class="seat-card" id="seatBlackCoachCard" onclick="requestSeat('blackCoach')" style="margin-top:10px;">
+        <div class="seat-avatar empty-avatar" id="blackCoachAvatar">+</div>
+        <div class="seat-name" id="blackCoachName">教练空位</div>
+        <div class="seat-status" id="blackCoachStatus">点击入座</div>
+      </div>
     </div>
+
+    <!-- 白棋方列 -->
     <div class="lobby-column col-white">
       <div class="lobby-column-header">⚪ 白棋方</div>
       <div class="seat-card" id="seatWhiteCard" onclick="requestSeat('white')">
@@ -275,7 +280,15 @@
         <div class="seat-name" id="whiteName">空位</div>
         <div class="seat-status" id="whiteStatus">点击入座</div>
       </div>
+      <!-- 白方教练 -->
+      <div class="seat-card" id="seatWhiteCoachCard" onclick="requestSeat('whiteCoach')" style="margin-top:10px;">
+        <div class="seat-avatar empty-avatar" id="whiteCoachAvatar">+</div>
+        <div class="seat-name" id="whiteCoachName">教练空位</div>
+        <div class="seat-status" id="whiteCoachStatus">点击入座</div>
+      </div>
     </div>
+
+    <!-- 观战席（4个） -->
     <div class="lobby-column col-spec">
       <div class="lobby-column-header">👁 观战席</div>
       <div id="specSeatsContainer"></div>
@@ -298,7 +311,6 @@
 </div>
 
 <div id="gameScreen" class="hidden">
-  <!-- ... 与之前相同，此处省略以节省篇幅，但实际完整文件中保留 ... -->
   <div class="game-container-online">
     <div class="board-panel">
       <div class="board-wrap">
@@ -311,7 +323,6 @@
       </div>
     </div>
     <div class="chat-panel">
-      <!-- ... 聊天面板内容 ... -->
       <div class="game-info">
         <div>🏠 房间: <span id="gameRoomCode">----</span></div>
         <div>🎴 你的身份: <span id="myRoleDisplay">观战</span> · <span id="gameStatus">未开始</span></div>
@@ -358,7 +369,6 @@
 </div>
 
 <script>
-  // ==================== 以下为完整 JavaScript ====================
   const MIC_GAIN = 2.5;
 
   let myAvatar = localStorage.getItem('goavatar') || null;
@@ -368,7 +378,6 @@
   const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR4Z2VtdHhpa3BpZWFxY29oZ2xyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk4MDY1NTIsImV4cCI6MjA5NTM4MjU1Mn0.I0PHUfWmiDpBnfjmTBJ1u6ybzZzhsTG0uaLbKBrcN1c';
   let supabaseClient = null;
   let currentUser = null;
-  let myGuestId = null;
   let gameSaved = false;
   let initAttempts = 0;
   const MAX_INIT_ATTEMPTS = 15;
@@ -394,24 +403,16 @@
         currentUser = session.user;
         console.log('✅ [P2P] 已登录用户:', currentUser.id);
       } else {
-        myGuestId = localStorage.getItem('guest_id');
-        if (!myGuestId) {
-          myGuestId = 'guest_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
-          localStorage.setItem('guest_id', myGuestId);
-        }
-        console.log('✅ [P2P] 游客 ID:', myGuestId);
+        console.warn('⚠️ [P2P] 未登录，跳转到登录页');
+        window.location.href = 'index.html';
+        return;
       }
       supabaseClient.auth.onAuthStateChange((event, session) => {
         if (event === 'SIGNED_IN' && session) {
           currentUser = session.user;
-          myGuestId = null;
         } else if (event === 'SIGNED_OUT') {
           currentUser = null;
-          myGuestId = localStorage.getItem('guest_id');
-          if (!myGuestId) {
-            myGuestId = 'guest_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
-            localStorage.setItem('guest_id', myGuestId);
-          }
+          window.location.href = 'index.html';
         }
       });
     } catch (e) {
@@ -424,6 +425,10 @@
     if (!supabaseClient) {
       await initSupabase();
       if (!supabaseClient) return;
+    }
+    if (!currentUser) {
+      console.warn('⚠️ [P2P] 未登录，跳过保存');
+      return;
     }
     if (gameSaved) return;
     if (!window.GAME.moveHistory || window.GAME.moveHistory.length === 0) return;
@@ -447,15 +452,12 @@
     const blackName = window.GAME.allMembers.get(window.GAME.lobbySeats.black)?.name || '黑方';
     const whiteName = window.GAME.allMembers.get(window.GAME.lobbySeats.white)?.name || '白方';
 
-    const uid = currentUser ? currentUser.id : null;
-    const gid = currentUser ? null : myGuestId;
     const roomId = window.GAME.roomId || 'p2p_' + Date.now();
     const mode = window.GAME.roomGameMode || 'casual';
 
     try {
       const { data, error } = await supabaseClient.from('games').insert({
-        user_id: uid,
-        guest_id: gid,
+        user_id: currentUser.id,
         room_id: roomId,
         black_player: blackName,
         white_player: whiteName,
@@ -469,11 +471,9 @@
         gameSaved = true;
         console.log('✅ [P2P] 战绩已保存成功！');
         const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString();
-        let delQuery = supabaseClient.from('games').delete().lt('created_at', threeDaysAgo);
-        if (currentUser) delQuery = delQuery.eq('user_id', currentUser.id);
-        else if (myGuestId) delQuery = delQuery.eq('guest_id', myGuestId);
-        else return;
-        await delQuery;
+        await supabaseClient.from('games').delete()
+          .lt('created_at', threeDaysAgo)
+          .eq('user_id', currentUser.id);
         console.log('🧹 [P2P] 清理旧记录完成');
       }
     } catch (e) {
@@ -490,7 +490,8 @@
   let urlEmail = urlParams.get('email');
   let myNick = localStorage.getItem('gonick');
   if (urlNick) { myNick = urlNick; localStorage.setItem('gonick', myNick); }
-  if (!myNick) { myNick = '游客' + Math.floor(Math.random() * 900 + 100); localStorage.setItem('gonick', myNick); }
+  if (!myNick) { myNick = '棋手'; localStorage.setItem('gonick', myNick); }
+  let userId = urlParams.get('uid');
 
   const joinRoomCode = urlParams.get('join');
 
@@ -499,7 +500,13 @@
     myPeerId: null,
     roomId: null,
     allMembers: new Map(),
-    lobbySeats: { black: null, white: null, spectators: Array(6).fill(null) },
+    lobbySeats: {
+      black: null,
+      white: null,
+      blackCoach: null,
+      whiteCoach: null,
+      spectators: Array(4).fill(null)
+    },
     mySeat: null,
     gameStarted: false,
     board: [],
@@ -511,7 +518,8 @@
     winLines: [],
     forbiddenLines: [],
     isProMode: isProMode,
-    roomGameMode: roomGameMode
+    roomGameMode: roomGameMode,
+    coachMarks: []   // 教练标记 { row, col, team } team=1黑队，2白队
   };
 
   window._allMembers = window.GAME.allMembers;
@@ -562,21 +570,74 @@
     window.GAME.moveHistory = [];
     window.GAME.winLines = [];
     window.GAME.forbiddenLines = [];
+    window.GAME.coachMarks = [];
     gameSaved = false;
+  }
+
+  // 绘制教练标记
+  function drawCoachMarks(ctx) {
+    const myTeam = getMyTeam();
+    if (myTeam === null) return; // 观战者不显示标记
+    const marks = window.GAME.coachMarks.filter(m => m.team === myTeam);
+    if (marks.length === 0) return;
+    for (let m of marks) {
+      const x = MARGIN + m.col * CELL_SIZE;
+      const y = MARGIN + m.row * CELL_SIZE;
+      const radius = stoneRadius * 0.7;
+      ctx.save();
+      ctx.shadowColor = 'rgba(0,0,0,0.3)';
+      ctx.shadowBlur = 6;
+      // 半透明填充
+      ctx.beginPath();
+      ctx.arc(x, y, radius, 0, Math.PI * 2);
+      ctx.fillStyle = myTeam === 1 ? 'rgba(220, 50, 50, 0.35)' : 'rgba(50, 120, 220, 0.35)';
+      ctx.fill();
+      // 边框
+      ctx.shadowBlur = 0;
+      ctx.strokeStyle = myTeam === 1 ? '#cc3333' : '#3377cc';
+      ctx.lineWidth = 2.5;
+      ctx.setLineDash([4, 4]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      // 中间小旗子或字母
+      ctx.fillStyle = myTeam === 1 ? '#cc3333' : '#3377cc';
+      ctx.font = `${radius * 0.9}px sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('⚑', x, y + 1);
+      ctx.restore();
+    }
+  }
+
+  function getMyTeam() {
+    const seat = window.GAME.mySeat;
+    if (seat === 'black' || seat === 'blackCoach') return 1;
+    if (seat === 'white' || seat === 'whiteCoach') return 2;
+    return null;
   }
 
   function drawBoard(drawLastMark) {
     if (drawLastMark === undefined) drawLastMark = !isProMode;
+    
+    const stoneSkinName = localStorage.getItem('stoneSkin') || 'default';
+    const boardSkinName = localStorage.getItem('boardSkin') || 'default';
+    const stoneSkin = window.STONE_SKINS?.[stoneSkinName] || STONE_SKINS?.default || {};
+    const boardSkin = window.BOARD_SKINS?.[boardSkinName] || BOARD_SKINS?.default || {};
+
     const lastMove = window.GAME.moveHistory.length > 0 ? window.GAME.moveHistory[window.GAME.moveHistory.length - 1] : null;
     Goban.drawBoard(ctx, window.GAME.board, {
-      lastMove: lastMove,
-      winLines: window.GAME.winLines,
-      forbiddenLines: window.GAME.forbiddenLines,
-      drawLastMark: drawLastMark,
-      boardSize: BOARD_SIZE,
-      margin: MARGIN,
-      stoneRadius: stoneRadius
+        lastMove: lastMove,
+        winLines: window.GAME.winLines,
+        forbiddenLines: window.GAME.forbiddenLines,
+        drawLastMark: drawLastMark,
+        boardSize: BOARD_SIZE,
+        margin: MARGIN,
+        stoneRadius: stoneRadius,
+        stoneSkin: stoneSkin,
+        boardSkin: boardSkin
     });
+    // 绘制教练标记（覆盖在棋盘之上）
+    drawCoachMarks(ctx);
   }
 
   function animateLines(lines, isForbidden, onComplete) {
@@ -599,7 +660,10 @@
         Goban.drawLinesProgress(ctx, lines, ease, MARGIN, CELL_SIZE, '#d64531');
       }
       if (progress < 1) requestAnimationFrame(frame);
-      else setTimeout(onComplete, 300);
+      else {
+        drawBoard(false);
+        setTimeout(onComplete, 300);
+      }
     }
     requestAnimationFrame(frame);
   }
@@ -685,7 +749,30 @@
     });
   }
 
+  // ===== 关键修改：onReceiveMessage 中处理 coachMark 转发 =====
   function onReceiveMessage(fromId, data) {
+    // 处理教练标记 - 房主需要转发给所有其他人
+    if (data.type === 'coachMark') {
+      // 如果是房主，且消息不是自己发的，则转发给所有人（除发送者）
+      if (window.GAME.isHost && fromId !== window.GAME.myPeerId) {
+        broadcastToAll(data, fromId);
+      }
+      // 然后本地应用（所有客户端都执行）
+      const myTeam = getMyTeam();
+      if (myTeam === null) return; // 观战者忽略
+      if (myTeam !== data.team) return; // 不是本队标记忽略
+      if (data.action === 'add') {
+        // 移除同位置旧标记（避免重复）
+        window.GAME.coachMarks = window.GAME.coachMarks.filter(m => !(m.row === data.row && m.col === data.col && m.team === data.team));
+        window.GAME.coachMarks.push({ row: data.row, col: data.col, team: data.team });
+      } else if (data.action === 'remove') {
+        window.GAME.coachMarks = window.GAME.coachMarks.filter(m => !(m.row === data.row && m.col === data.col && m.team === data.team));
+      }
+      drawBoard();
+      return;
+    }
+
+    // 其他消息交给核心处理
     window.Core.handleOnlineMessage(fromId, data, {
       state: window.GAME,
       myNick: myNick,
@@ -808,6 +895,27 @@
     window.UI.updateGameInfoPanel(window.GAME.lobbySeats, window.GAME.allMembers, window.GAME.mySeat, window.GAME.gameStarted, window.GAME.gameOver, window.GAME.isProMode);
     window.UI.updateTurnDisplay(window.GAME.gameStarted, window.GAME.gameOver, window.GAME.winner, window.GAME.currentPlayer, window.GAME.mySeat);
     window.UI.updateGameButtons(window.GAME.mySeat, window.GAME.gameStarted, window.GAME.gameOver);
+  }
+
+  // ===== 教练标记操作（广播给所有人，房主会转发） =====
+  function toggleCoachMark(row, col, team) {
+    const idx = window.GAME.coachMarks.findIndex(m => m.row === row && m.col === col && m.team === team);
+    let action;
+    if (idx !== -1) {
+      window.GAME.coachMarks.splice(idx, 1);
+      action = 'remove';
+    } else {
+      window.GAME.coachMarks.push({ row, col, team });
+      action = 'add';
+    }
+    // 广播给所有人（非房主会发给房主，房主再转发）
+    broadcastToAll({
+      type: 'coachMark',
+      row, col, team,
+      action: action
+    });
+    // 本地立即绘制
+    drawBoard();
   }
 
   function tryPlace(row, col) {
@@ -1140,55 +1248,59 @@
     } else showToast('输入房间码');
   };
 
+  // ===== 棋盘点击事件：区分教练标记和落子 =====
   canvas.addEventListener('click', (e) => {
-    if (!window.GAME.gameStarted || window.GAME.gameOver) return;
     let rect = canvas.getBoundingClientRect();
     let scale = canvas.width / rect.width;
     let mx = (e.clientX - rect.left) * scale;
     let myY = (e.clientY - rect.top) * scale;
     let col = Math.round((mx - MARGIN) / CELL_SIZE);
     let row = Math.round((myY - MARGIN) / CELL_SIZE);
-    if (row >= 0 && row < BOARD_SIZE && col >= 0 && col < BOARD_SIZE && window.GAME.board[row][col] === 0) {
-      tryPlace(row, col);
+    if (row < 0 || row >= BOARD_SIZE || col < 0 || col >= BOARD_SIZE) return;
+
+    const seat = window.GAME.mySeat;
+    // 教练点击：标记操作
+    if (seat === 'blackCoach' || seat === 'whiteCoach') {
+      const team = seat === 'blackCoach' ? 1 : 2;
+      toggleCoachMark(row, col, team);
+      return;
     }
+
+    // 非教练：正常落子
+    if (!window.GAME.gameStarted || window.GAME.gameOver) return;
+    if (window.GAME.board[row][col] !== 0) return;
+    tryPlace(row, col);
   });
 
   window.addEventListener('resize', () => {
     if (!document.getElementById('gameScreen').classList.contains('hidden')) drawBoard();
   });
 
-  // ===== 邀请好友弹窗（模态框） =====
+  // ===== 邀请好友弹窗 =====
   async function openInviteFriendModal() {
     const modal = document.getElementById('inviteFriendModal');
     const container = document.getElementById('inviteFriendList');
 
-    // 1. 立即显示模态框
     modal.classList.add('show');
-
-    // 2. 显示加载状态
     container.innerHTML = '<div style="color: #a09070; text-align: center; padding: 20px;">加载好友列表...</div>';
 
-    // 3. 检查 Friends 是否可用
     if (typeof Friends === 'undefined' || !Friends.getFriendListData) {
       container.innerHTML = '<div style="color: #f87171; text-align: center; padding: 20px;">好友模块未初始化，请刷新页面</div>';
       return;
     }
 
-    // 4. 获取好友列表
     const friends = await Friends.getFriendListData();
     if (!friends || friends.length === 0) {
       container.innerHTML = '<div style="color: #a09070; text-align: center; padding: 20px;">暂无好友</div>';
       return;
     }
 
-    // 5. 检查是否有房间
     const roomCode = sessionStorage.getItem('p2p_current_room');
     if (!roomCode) {
       container.innerHTML = '<div style="color: #f87171; text-align: center; padding: 20px;">请先创建或加入房间</div>';
       return;
     }
 
-    // 6. 渲染好友列表
     let html = '';
     friends.forEach(f => {
       const avatar = f.avatar_url || '';
@@ -1241,18 +1353,14 @@
     updateEntryDisplay();
     window.UI.renderSpectators();
     await initSupabase();
-    console.log('🚀 P2P 联机已启动（高音质 + 麦克风增益 + 头像支持 + 邀请功能）');
-    showToast(`欢迎！`);
+    console.log('🚀 P2P 联机已启动（教练标记转发修复 + 高音质 + 麦克风增益 + 头像支持 + 邀请功能）');
+    showToast(`欢迎，${myNick}！`);
 
-    // 初始化好友系统
     if (typeof Friends !== 'undefined' && currentUser && supabaseClient) {
       Friends.init(supabaseClient, currentUser);
       console.log('✅ Friends 已初始化');
-    } else {
-      console.warn('⚠️ Friends 初始化失败');
     }
 
-    // 检查是否有 join 参数（从邮件邀请跳转）
     if (joinRoomCode) {
       console.log('📨 检测到邀请加入，房间码:', joinRoomCode);
       setTimeout(() => {

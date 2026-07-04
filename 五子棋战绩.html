@@ -130,7 +130,6 @@
       white-space: nowrap;
     }
 
-    /* 复盘弹窗 */
     .modal {
       position: fixed; top: 0; left: 0; width: 100%; height: 100%;
       background: rgba(0,0,0,0.85); backdrop-filter: blur(10px);
@@ -215,7 +214,6 @@
     }
   </style>
 <base target="_blank">
-<base target="_blank">
 </head>
 <body>
 
@@ -237,7 +235,6 @@
   </div>
 </div>
 
-<!-- 复盘弹窗 -->
 <div id="replayModal" class="modal">
   <div class="modal-content">
     <div class="replay-header">
@@ -258,7 +255,6 @@
       <button class="ctrl-btn secondary" id="speed05" onclick="setSpeed(0.5)">0.5x</button>
       <button class="ctrl-btn secondary active-speed" id="speed1" onclick="setSpeed(1)">1x</button>
       <button class="ctrl-btn secondary" id="speed2" onclick="setSpeed(2)">2x</button>
-      <!-- ===== 新增导入按钮 ===== -->
       <button class="ctrl-btn" id="importBtn" onclick="importToLocal()" disabled>📥 导入棋盘</button>
     </div>
     <div class="replay-info" id="replayInfo">点击开始复盘</div>
@@ -278,12 +274,10 @@
 
   let supabase = null;
   let currentUser = null;
-  let myNick = localStorage.getItem('gonick') || '游客';
-  let guestId = localStorage.getItem('guest_id');
+  let myNick = localStorage.getItem('gonick') || '棋手';
 
   let allRecords = [];
 
-  // 复盘状态
   let replayMoves = [];
   let replayStep = 0;
   let replayTimer = null;
@@ -293,18 +287,19 @@
   let rCanvas = null;
   let rCtx = null;
   const BASE_INTERVAL = 700;
-  let currentReplayMode = 'casual'; // 新增
+  let currentReplayMode = 'casual';
 
   async function init() {
     if (!window.supabase) { showToast('Supabase 库加载失败'); return; }
     supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     const { data: { session } } = await supabase.auth.getSession();
-    if (session) currentUser = session.user;
-
-    if (!guestId) {
-      guestId = 'guest_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
-      localStorage.setItem('guest_id', guestId);
+    if (session) {
+      currentUser = session.user;
+    } else {
+      showToast('请先登录');
+      setTimeout(() => window.location.href = 'index.html', 1500);
+      return;
     }
 
     await cleanupOldRecords();
@@ -313,29 +308,19 @@
 
   async function cleanupOldRecords() {
     const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString();
-    let query = supabase.from('games').delete().lt('created_at', threeDaysAgo);
-    if (currentUser) {
-      query = query.or('user_id.eq.' + currentUser.id + ',guest_id.eq.' + currentUser.id);
-    } else {
-      query = query.or('guest_id.eq.' + guestId + ',user_id.eq.' + guestId);
-    }
-    await query;
+    await supabase.from('games').delete()
+      .lt('created_at', threeDaysAgo)
+      .eq('user_id', currentUser.id);
   }
 
   async function loadRecords() {
     const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString();
-    let query = supabase.from('games')
+    const { data, error } = await supabase.from('games')
       .select('*')
       .gte('created_at', threeDaysAgo)
+      .eq('user_id', currentUser.id)
       .order('created_at', { ascending: false });
 
-    if (currentUser) {
-      query = query.or('user_id.eq.' + currentUser.id + ',guest_id.eq.' + currentUser.id);
-    } else {
-      query = query.or('guest_id.eq.' + guestId + ',user_id.eq.' + guestId);
-    }
-
-    const { data, error } = await query;
     if (error) {
       showToast('加载战绩失败: ' + error.message);
       document.getElementById('subtitle').innerText = '加载失败，请刷新重试';
@@ -347,7 +332,7 @@
   }
 
   function getMyResult(g) {
-    let myId = currentUser ? currentUser.id : guestId;
+    let myId = currentUser.id;
     let myRole = null;
 
     if (g.black_id === myId) myRole = 'black';
@@ -446,12 +431,11 @@
     return div.innerHTML;
   }
 
-  // ========== 复盘核心 ==========
   function openReplay(index) {
     let g = allRecords[index];
     if (!g || !g.moves || g.moves.length === 0) { showToast('该局无落子记录'); return; }
 
-    currentReplayMode = g.game_mode || 'casual'; // 记录模式
+    currentReplayMode = g.game_mode || 'casual';
 
     replayMoves = g.moves;
     replayStep = 0;
@@ -465,7 +449,7 @@
     document.getElementById('progressFill').style.width = '0%';
     document.getElementById('replayInfo').innerText = '黑棋: ' + g.black_player + '　白棋: ' + g.white_player;
     document.getElementById('pauseBtn').innerText = '⏸️ 暂停';
-    document.getElementById('importBtn').disabled = true; // 初始禁用
+    document.getElementById('importBtn').disabled = true;
     updateSpeedButtons();
 
     document.getElementById('replayModal').classList.add('show');
@@ -504,9 +488,9 @@
     } else {
       document.getElementById('pauseBtn').innerText = '🔁 已结束';
       isPaused = true;
-      updateImportButton(); // 步数到末尾禁用导入
+      updateImportButton();
     }
-    updateImportButton(); // 每走一步更新按钮状态
+    updateImportButton();
   }
 
   function togglePause() {
@@ -545,10 +529,8 @@
     document.getElementById('speed2').classList.toggle('active-speed', replaySpeed === 2);
   }
 
-  // ===== 导入按钮状态控制 =====
   function updateImportButton() {
     const btn = document.getElementById('importBtn');
-    // 只有暂停状态，且步数>0且步数未到末尾（即游戏尚未结束）才启用
     if (isPaused && replayStep > 0 && replayStep < replayMoves.length) {
       btn.disabled = false;
     } else {
@@ -556,7 +538,6 @@
     }
   }
 
-  // ===== 导入功能 =====
   function importToLocal() {
     if (!isPaused || replayStep <= 0 || replayStep >= replayMoves.length) {
       showToast('请先暂停复盘且步数未结束再导入');
@@ -572,7 +553,6 @@
     window.location.href = '五子棋.html?load=replay';
   }
 
-  // ========== 绘制 ==========
   function drawReplayBoard() {
     if (!rCtx) return;
     rCtx.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);

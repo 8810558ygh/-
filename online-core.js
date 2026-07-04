@@ -1,9 +1,11 @@
-// online-core.js —— 联机版核心逻辑（支持头像）
+// online-core.js —— 联机版核心逻辑（支持头像，增加教练席位）
 
 // ========== 座位管理 ==========
 function getSeatOccupant(seatId, lobbySeats) {
     if (seatId === 'black') return lobbySeats.black;
     if (seatId === 'white') return lobbySeats.white;
+    if (seatId === 'blackCoach') return lobbySeats.blackCoach;
+    if (seatId === 'whiteCoach') return lobbySeats.whiteCoach;
     if (seatId.startsWith('spec-')) {
         let idx = parseInt(seatId.split('-')[1]);
         return lobbySeats.spectators[idx];
@@ -14,16 +16,20 @@ function getSeatOccupant(seatId, lobbySeats) {
 function setSeat(seatId, pid, lobbySeats) {
     if (seatId === 'black') lobbySeats.black = pid;
     else if (seatId === 'white') lobbySeats.white = pid;
+    else if (seatId === 'blackCoach') lobbySeats.blackCoach = pid;
+    else if (seatId === 'whiteCoach') lobbySeats.whiteCoach = pid;
     else if (seatId.startsWith('spec-')) {
         let idx = parseInt(seatId.split('-')[1]);
-        if (idx >= 0 && idx < 6) lobbySeats.spectators[idx] = pid;
+        if (idx >= 0 && idx < 4) lobbySeats.spectators[idx] = pid;
     }
 }
 
 function clearAllSeatsOf(pid, lobbySeats) {
     if (lobbySeats.black === pid) lobbySeats.black = null;
     if (lobbySeats.white === pid) lobbySeats.white = null;
-    for (let i = 0; i < 6; i++) {
+    if (lobbySeats.blackCoach === pid) lobbySeats.blackCoach = null;
+    if (lobbySeats.whiteCoach === pid) lobbySeats.whiteCoach = null;
+    for (let i = 0; i < 4; i++) {
         if (lobbySeats.spectators[i] === pid) lobbySeats.spectators[i] = null;
     }
 }
@@ -31,7 +37,9 @@ function clearAllSeatsOf(pid, lobbySeats) {
 function findSeatOf(pid, lobbySeats) {
     if (lobbySeats.black === pid) return 'black';
     if (lobbySeats.white === pid) return 'white';
-    for (let i = 0; i < 6; i++) {
+    if (lobbySeats.blackCoach === pid) return 'blackCoach';
+    if (lobbySeats.whiteCoach === pid) return 'whiteCoach';
+    for (let i = 0; i < 4; i++) {
         if (lobbySeats.spectators[i] === pid) return 'spec-' + i;
     }
     return null;
@@ -42,9 +50,11 @@ function autoAssignSeat(peerId, lobbySeats) {
     if (existing) return existing;
     if (!lobbySeats.black) return 'black';
     if (!lobbySeats.white) return 'white';
-    for (let i = 0; i < 6; i++) {
+    for (let i = 0; i < 4; i++) {
         if (!lobbySeats.spectators[i]) return 'spec-' + i;
     }
+    if (!lobbySeats.blackCoach) return 'blackCoach';
+    if (!lobbySeats.whiteCoach) return 'whiteCoach';
     return null;
 }
 
@@ -165,6 +175,8 @@ function handleOnlineMessage(fromId, data, context) {
             let stillThere = false;
             if (oldMySeat === 'black' && context.state.lobbySeats.black === context.state.myPeerId) stillThere = true;
             if (oldMySeat === 'white' && context.state.lobbySeats.white === context.state.myPeerId) stillThere = true;
+            if (oldMySeat === 'blackCoach' && context.state.lobbySeats.blackCoach === context.state.myPeerId) stillThere = true;
+            if (oldMySeat === 'whiteCoach' && context.state.lobbySeats.whiteCoach === context.state.myPeerId) stillThere = true;
             if (oldMySeat.startsWith('spec-')) {
                 let idx = parseInt(oldMySeat.split('-')[1]);
                 if (context.state.lobbySeats.spectators[idx] === context.state.myPeerId) stillThere = true;

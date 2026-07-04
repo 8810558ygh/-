@@ -70,14 +70,19 @@
     .conn-mode-badge.p2p { border-color: #e0816b; color: #e0816b; }
     .conn-mode-badge.supa { border-color: #6c9fd1; color: #6c9fd1; }
 
-    /* ===== 好友抽屉 ===== */
     .friend-drawer {
       position: fixed; top: 60px; left: 0; bottom: 0; width: 64px;
-      background: rgba(25, 18, 10, 0.92); backdrop-filter: blur(12px);
-      border-right: 1px solid rgba(230, 190, 110, 0.3); z-index: 99;
+      background: rgba(25, 18, 10, 0.92);
+      backdrop-filter: blur(12px);
+      border-right: 1px solid rgba(230, 190, 110, 0.3);
+      z-index: 99;
       transition: width 0.35s cubic-bezier(0.4, 0, 0.2, 1);
-      overflow: hidden; display: flex; flex-direction: column; padding-top: 12px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      padding-top: 12px;
     }
+    .friend-drawer.hidden { display: none; }
     .friend-drawer.open { width: 280px; }
     .friend-drawer-toggle {
       position: absolute; top: 8px; right: 6px;
@@ -100,7 +105,16 @@
     .friend-drawer.open .friend-drawer-header .add-btn { opacity: 1; }
     .friend-drawer-header .add-btn:hover { background: rgba(200, 160, 100, 0.35); }
 
-    .friend-list { flex: 1; overflow-y: auto; padding: 8px 0; display: flex; flex-direction: column; gap: 4px; }
+    .friend-list {
+      flex: 1;
+      overflow-y: auto;
+      overflow-x: hidden;
+      padding: 8px 0;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      min-height: 0;
+    }
     .friend-list::-webkit-scrollbar { width: 3px; }
     .friend-list::-webkit-scrollbar-thumb { background: #5e4a31; border-radius: 10px; }
 
@@ -122,7 +136,6 @@
     .friend-drawer:not(.open) .friend-item { justify-content: center; padding: 6px 0; }
     .friend-drawer:not(.open) .friend-item .avatar-small { width: 46px; height: 46px; }
 
-    /* ===== 登录页 ===== */
     #loginScreen { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px; padding: 20px; }
     .login-card { background: rgba(0, 0, 0, 0.55); backdrop-filter: blur(8px); padding: 32px 24px; border-radius: 48px; border: 1px solid #e9bc6e; text-align: center; width: 100%; max-width: 420px; }
     .login-title { font-size: 2rem; font-weight: 800; color: #ebc282; margin-bottom: 8px; line-height: 1.2; }
@@ -136,13 +149,10 @@
     .auth-form button:hover { transform: translateY(-1px); }
     .auth-form button:disabled { background: #5a4a3a; color: #888; cursor: not-allowed; }
     .auth-hint { font-size: 0.8rem; color: #a09070; margin-top: 8px; }
-    .guest-btn { margin-top: 16px; background: transparent; border: 1px dashed #bd9a60; padding: 10px; border-radius: 40px; font-size: 0.95rem; cursor: pointer; color: #bd9a60; transition: 0.2s; width: 100%; }
-    .guest-btn:hover { background: rgba(189, 154, 96, 0.15); border-style: solid; }
     .user-info-bar { display: flex; align-items: center; gap: 12px; justify-content: center; margin-bottom: 16px; flex-wrap: wrap; }
     .user-info-bar span { color: #e9bc6e; font-weight: bold; font-size: 0.95rem; }
     .logout-btn { background: rgba(224, 100, 80, 0.2); border: 1px solid #e0816b; color: #e0816b; padding: 4px 14px; border-radius: 40px; cursor: pointer; font-size: 0.8rem; }
 
-    /* ===== 大厅页 ===== */
     #hallScreen { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 30px; padding: 80px 16px 40px; padding-left: 80px; }
     @media (max-width: 768px) { #hallScreen { padding-left: 76px; } }
     @media (max-width: 480px) { #hallScreen { padding-left: 68px; } }
@@ -157,7 +167,6 @@
     .mode-desc { font-size: 0.8rem; color: #a09070; line-height: 1.4; }
     .mode-tag { font-size: 0.65rem; padding: 2px 10px; border-radius: 20px; background: rgba(245, 197, 66, 0.15); color: #f5c542; border: 1px solid rgba(245, 197, 66, 0.3); }
 
-    /* ===== 弹窗 ===== */
     .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); backdrop-filter: blur(8px); z-index: 1000; display: flex; align-items: center; justify-content: center; visibility: hidden; opacity: 0; transition: 0.2s; padding: 16px; }
     .modal.show { visibility: visible; opacity: 1; }
     .modal-content { background: #2c2419; border-radius: 40px; padding: 28px 24px; width: 100%; max-width: 420px; border: 2px solid #e9bc6e; text-align: center; max-height: 90vh; overflow-y: auto; }
@@ -181,6 +190,21 @@
     .setting-check { width: 20px; height: 20px; border-radius: 50%; border: 2px solid #bd9a60; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
     .setting-option.selected .setting-check { background: #f5c542; border-color: #f5c542; }
     .setting-option.selected .setting-check::after { content: '✓'; color: #1e160c; font-weight: bold; font-size: 0.8rem; }
+
+    .skin-entry-btn {
+      background: rgba(200, 160, 100, 0.15);
+      border: 1px solid #e9bc6e;
+      border-radius: 40px;
+      padding: 6px 16px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      color: #ecd9b4;
+      transition: 0.2s;
+      width: 100%;
+      margin-top: 8px;
+      font-family: inherit;
+    }
+    .skin-entry-btn:hover { background: rgba(200, 160, 100, 0.3); }
 
     .avatar-preview-modal .modal-content { max-width: 340px; padding: 32px 24px; }
     .avatar-preview-large { width: 120px; height: 120px; border-radius: 50%; object-fit: cover; border: 3px solid #e9bc6e; background: #3d2e1f; margin: 0 auto 16px; display: block; }
@@ -240,8 +264,8 @@
 
 <div id="toast" class="toast"></div>
 
-<!-- ===== 好友抽屉 ===== -->
-<div id="friendDrawer" class="friend-drawer">
+<!-- ===== 好友抽屉（默认隐藏，登录后显示） ===== -->
+<div id="friendDrawer" class="friend-drawer hidden">
   <button class="friend-drawer-toggle" onclick="Friends.toggleFriendDrawer()">▶</button>
   <div class="friend-drawer-header">
     <span class="title">👥 好友</span>
@@ -283,7 +307,6 @@
       </div>
     </div>
 
-    <button class="guest-btn" onclick="enterAsGuest()">🎋 以游客身份进入</button>
     <div class="auth-hint" style="margin-top:12px;">登录后昵称和头像自动同步到所有设备</div>
   </div>
 </div>
@@ -295,7 +318,7 @@
       <div class="avatar-wrapper" id="avatarWrapper" onclick="openAvatarPreview()" title="点击查看个人信息">
         <div class="avatar-placeholder" id="avatarPlaceholder">👤</div>
         <img class="avatar-img hidden" id="avatarImg" src="" alt="头像">
-        <span class="avatar-nick" id="avatarNick">游客</span>
+        <span class="avatar-nick" id="avatarNick">棋手</span>
       </div>
     </div>
     <div class="top-right">
@@ -374,6 +397,8 @@
       </div>
       <div class="setting-check"></div>
     </div>
+    <div class="setting-group-title">🎨 外观</div>
+    <button class="skin-entry-btn" onclick="window.location.href='skins.html'">🎨 皮肤中心</button>
     <button class="modal-close-btn" onclick="closeSettings()">确定</button>
   </div>
 </div>
@@ -383,7 +408,7 @@
   <div class="modal-content">
     <div class="avatar-preview-placeholder-large hidden" id="previewPlaceholderLarge">👤</div>
     <img class="avatar-preview-large hidden" id="previewImgLarge" src="" alt="头像">
-    <div class="avatar-preview-nick" id="previewNick">游客</div>
+    <div class="avatar-preview-nick" id="previewNick">棋手</div>
     <div class="avatar-preview-actions">
       <button class="primary-btn" onclick="openProfileFromPreview()">🧑 个人中心</button>
       <button class="secondary-btn" onclick="closeAvatarPreview()">关闭</button>
@@ -430,19 +455,12 @@
 
   let supabase = null;
   let currentUser = null;
-  let myNick = localStorage.getItem('gonick') || ('游客' + Math.floor(Math.random() * 900 + 100));
+  let myNick = localStorage.getItem('gonick') || '棋手';
   let connMode = localStorage.getItem('connMode') || 'supabase';
   let gameMode = localStorage.getItem('gameMode') || 'casual';
   let myAvatarUrl = localStorage.getItem('goavatar') || null;
 
-  function ensureGuestId() {
-    if (!localStorage.getItem('guest_id')) {
-      localStorage.setItem('guest_id', 'guest_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6));
-    }
-  }
-
   async function initSupabase() {
-    ensureGuestId();
     if (!window.supabase) { showToast('Supabase 库加载失败'); return; }
     supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -581,7 +599,7 @@
   async function logout() {
     if (supabase) await supabase.auth.signOut();
     currentUser = null;
-    myNick = '游客' + Math.floor(Math.random() * 900 + 100);
+    myNick = '棋手';
     myAvatarUrl = null;
     localStorage.setItem('gonick', myNick);
     localStorage.removeItem('goavatar');
@@ -592,16 +610,6 @@
     showToast('已退出登录');
   }
 
-  function enterAsGuest() {
-    let nick = document.getElementById('loginNickname')?.value?.trim();
-    if (!nick) nick = myNick;
-    myNick = nick;
-    localStorage.setItem('gonick', myNick);
-    updateAvatarUI();
-    showToast('欢迎，' + myNick + '！');
-    showHallScreen();
-  }
-
   function showLoginScreen() {
     document.getElementById('loginScreen').classList.remove('hidden');
     document.getElementById('hallScreen').classList.add('hidden');
@@ -609,21 +617,21 @@
     document.getElementById('authForms').classList.remove('hidden');
     document.getElementById('loginEmail').value = '';
     document.getElementById('loginPassword').value = '';
-    document.getElementById('friendDrawer').style.display = 'none';
+    // 隐藏好友抽屉
+    document.getElementById('friendDrawer').classList.add('hidden');
   }
 
   function showHallScreen() {
     document.getElementById('loginScreen').classList.add('hidden');
     document.getElementById('hallScreen').classList.remove('hidden');
+    // 显示好友抽屉
+    document.getElementById('friendDrawer').classList.remove('hidden');
     updateConnBadge();
     if (currentUser) {
       document.getElementById('userInfoBar').classList.remove('hidden');
       document.getElementById('authForms').classList.add('hidden');
       document.getElementById('userEmailDisplay').innerText = currentUser.email;
     }
-    
- document.getElementById('friendDrawer').style.display = 'flex';
-    // ===== 初始化好友系统 =====
     if (typeof Friends !== 'undefined' && currentUser && supabase) {
       Friends.init(supabase, currentUser);
     }
@@ -674,7 +682,7 @@
     if (currentUser) {
       info.innerHTML = '当前账号: <span style="color:#e9bc6e">' + currentUser.email + '</span><br>昵称: <span style="color:#e9bc6e">' + myNick + '</span>';
     } else {
-      info.innerHTML = '当前身份: <span style="color:#e9bc6e">游客</span><br>昵称: <span style="color:#e9bc6e">' + myNick + '</span>';
+      info.innerHTML = '当前身份: <span style="color:#e9bc6e">未登录</span>';
     }
   }
   function closeProfile() {
@@ -698,25 +706,29 @@
   }
 
   function enterAIGame() {
+    if (!currentUser) { showToast('请先登录'); return; }
     let params = new URLSearchParams();
     params.set('nickname', myNick);
     params.set('mode', gameMode);
-    if (currentUser) params.set('uid', currentUser.id);
+    params.set('uid', currentUser.id);
     window.location.href = '五子棋AI.html?' + params.toString();
   }
 
   function enterLocalGame() {
+    if (!currentUser) { showToast('请先登录'); return; }
     let params = new URLSearchParams();
     params.set('nick', myNick);
     params.set('mode', gameMode);
+    params.set('uid', currentUser.id);
     window.location.href = '五子棋.html?' + params.toString();
   }
 
   function enterOnlineGame() {
+    if (!currentUser) { showToast('请先登录'); return; }
     let params = new URLSearchParams();
     params.set('nick', myNick);
     params.set('mode', gameMode);
-    if (currentUser) params.set('uid', currentUser.id);
+    params.set('uid', currentUser.id);
     if (connMode === 'p2p') {
       window.location.href = '五子棋P2P.html?' + params.toString();
     } else {

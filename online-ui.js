@@ -1,4 +1,4 @@
-// online-ui.js —— 联机版通用 UI 渲染函数（支持头像）
+// online-ui.js —— 联机版通用 UI 渲染函数（支持头像，增加教练席位）
 
 // ========== 设置全局引用，供 updateSeatUI 使用 ==========
 window._allMembers = new Map();
@@ -34,7 +34,9 @@ function lockNicknameDisplay(myNick) {
 function updateLobbyUI(seats, isHost, gameMode) {
     updateSeatUI('black', seats.black);
     updateSeatUI('white', seats.white);
-    for (let i = 0; i < 6; i++) updateSeatUI('spec-' + i, seats.spectators[i]);
+    updateSeatUI('blackCoach', seats.blackCoach);
+    updateSeatUI('whiteCoach', seats.whiteCoach);
+    for (let i = 0; i < 4; i++) updateSeatUI('spec-' + i, seats.spectators[i]);
 
     let startBtn = document.getElementById('startGameButton');
     if (isHost && seats.black && seats.white) startBtn.classList.add('show');
@@ -48,6 +50,7 @@ function updateLobbyUI(seats, isHost, gameMode) {
 // ===== 核心：更新单个座位（支持头像图片） =====
 function updateSeatUI(seatId, occupantId) {
     let isBlack = seatId === 'black', isWhite = seatId === 'white';
+    let isBlackCoach = seatId === 'blackCoach', isWhiteCoach = seatId === 'whiteCoach';
     let isSpec = seatId.startsWith('spec-');
     let idx = isSpec ? parseInt(seatId.split('-')[1]) : -1;
 
@@ -62,11 +65,23 @@ function updateSeatUI(seatId, occupantId) {
         nameSpan = document.getElementById('whiteName');
         statusSpan = document.getElementById('whiteStatus');
         cardDiv = document.getElementById('seatWhiteCard');
-    } else {
+    } else if (isBlackCoach) {
+        avatarDiv = document.getElementById('blackCoachAvatar');
+        nameSpan = document.getElementById('blackCoachName');
+        statusSpan = document.getElementById('blackCoachStatus');
+        cardDiv = document.getElementById('seatBlackCoachCard');
+    } else if (isWhiteCoach) {
+        avatarDiv = document.getElementById('whiteCoachAvatar');
+        nameSpan = document.getElementById('whiteCoachName');
+        statusSpan = document.getElementById('whiteCoachStatus');
+        cardDiv = document.getElementById('seatWhiteCoachCard');
+    } else if (isSpec) {
         avatarDiv = document.getElementById('specAvatar' + idx);
         nameSpan = document.getElementById('specName' + idx);
         statusSpan = document.getElementById('specStatus' + idx);
         cardDiv = document.getElementById('specCard' + idx);
+    } else {
+        return;
     }
     if (!avatarDiv) return;
 
@@ -83,9 +98,12 @@ function updateSeatUI(seatId, occupantId) {
             avatarDiv.className = 'seat-avatar';
         } else {
             avatarDiv.innerText = displayName.charAt(0).toUpperCase();
-            avatarDiv.className = 'seat-avatar ' + (isBlack ? 'black-avatar' : (isWhite ? 'white-avatar' : 'spec-avatar'));
+            avatarDiv.className = 'seat-avatar ' + (isBlack ? 'black-avatar' : (isWhite ? 'white-avatar' : (isBlackCoach || isWhiteCoach ? 'spec-avatar' : 'spec-avatar')));
         }
-        nameSpan.innerText = displayName + (occupantId === myId ? ' (我)' : '');
+        let label = '';
+        if (isBlackCoach) label = ' (教练)';
+        else if (isWhiteCoach) label = ' (教练)';
+        nameSpan.innerText = displayName + (occupantId === myId ? ' (我)' : '') + label;
         statusSpan.innerText = '已入座';
         cardDiv.classList.add('occupied-seat');
         if (occupantId === myId) cardDiv.classList.add('is-me-seat');
@@ -94,7 +112,11 @@ function updateSeatUI(seatId, occupantId) {
         // 空座位
         avatarDiv.innerText = '+';
         avatarDiv.className = 'seat-avatar empty-avatar';
-        nameSpan.innerText = '空位';
+        if (isBlackCoach || isWhiteCoach) {
+            nameSpan.innerText = '教练空位';
+        } else {
+            nameSpan.innerText = '空位';
+        }
         statusSpan.innerText = '点击入座';
         cardDiv.classList.remove('occupied-seat', 'is-me-seat');
     }
@@ -104,7 +126,7 @@ function renderSpectators() {
     let container = document.getElementById('specSeatsContainer');
     if (!container) return;
     container.innerHTML = '';
-    for (let i = 0; i < 6; i++) {
+    for (let i = 0; i < 4; i++) {
         let div = document.createElement('div');
         div.className = 'seat-card';
         div.onclick = function() {
@@ -176,7 +198,7 @@ function updateGameInfoPanel(seats, allMembers, mySeat, gameStarted, gameOver, i
 
     let roleEl = document.getElementById('myRoleDisplay');
     if (roleEl) {
-        let role = mySeat === 'black' ? '黑棋' : (mySeat === 'white' ? '白棋' : '观战');
+        let role = mySeat === 'black' ? '黑棋' : (mySeat === 'white' ? '白棋' : (mySeat === 'blackCoach' ? '黑方教练' : (mySeat === 'whiteCoach' ? '白方教练' : '观战')));
         roleEl.innerText = role;
     }
 

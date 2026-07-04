@@ -14,6 +14,7 @@
   <script src="audio.js"></script>
   <link rel="stylesheet" href="music-player.css">
   <script src="music-player.js"></script>
+  <script src="skins.js"></script>
   <base target="_blank">
   <style>
     #gameScreen { padding-top: 80px; }
@@ -53,7 +54,7 @@
   <div class="entry-card">
     <div class="entry-title">⚫ 五子棋 · 云端对弈 ⚪</div>
     <div class="user-info-display" id="userInfoDisplay">
-      <div class="nick">👤 <span id="displayNickname">游客</span></div>
+      <div class="nick">👤 <span id="displayNickname">棋手</span></div>
       <div class="email" id="displayEmailArea"></div>
     </div>
     <div class="entry-buttons">
@@ -136,7 +137,6 @@
 </div>
 
 <script>
-  // ==================== 配置与用户信息 ====================
   const urlParams = new URLSearchParams(window.location.search);
   let gameMode = urlParams.get('mode') || 'casual';
   let isProMode = gameMode === 'pro';
@@ -146,20 +146,19 @@
   let urlEmail = urlParams.get('email');
   let myNick = localStorage.getItem('gonick');
   if (urlNick) { myNick = decodeURIComponent(urlNick); localStorage.setItem('gonick', myNick); }
-  if (!myNick) { myNick = '游客' + Math.floor(Math.random() * 900 + 100); localStorage.setItem('gonick', myNick); }
+  if (!myNick) { myNick = '棋手'; localStorage.setItem('gonick', myNick); }
 
   let myUserId = localStorage.getItem('gobang_user_id');
   if (!myUserId) {
-    myUserId = crypto.randomUUID ? crypto.randomUUID() : 'guest_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+    myUserId = crypto.randomUUID ? crypto.randomUUID() : 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
     localStorage.setItem('gobang_user_id', myUserId);
   }
-  let urlUserId = urlParams.get('user_id');
+  let urlUserId = urlParams.get('uid');
   if (urlUserId) {
     myUserId = urlUserId;
     localStorage.setItem('gobang_user_id', myUserId);
   }
 
-  // ==================== 全局状态 ====================
   window.GAME = {
     isHost: false,
     myUserId: myUserId,
@@ -194,31 +193,26 @@
   let canvas = document.getElementById('gobanCanvas');
   let ctx = canvas.getContext('2d');
 
-  // ==================== Supabase 客户端 ====================
   const SUPABASE_URL = 'https://txgemtxikpieaqcohglr.supabase.co';
   const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR4Z2VtdHhpa3BpZWFxY29oZ2xyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk4MDY1NTIsImV4cCI6MjA5NTM4MjU1Mn0.I0PHUfWmiDpBnfjmTBJ1u6ybzZzhsTG0uaLbKBrcN1c';
   const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
   let currentUser = null;
-  let myGuestId = null;
 
   async function fetchCurrentUser() {
     const { data: { session } } = await supabaseClient.auth.getSession();
     if (session) {
       currentUser = session.user;
-      myGuestId = null;
+      myUserId = currentUser.id;
+      localStorage.setItem('gobang_user_id', myUserId);
     } else {
-      myGuestId = localStorage.getItem('guest_id');
-      if (!myGuestId) {
-        myGuestId = 'guest_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
-        localStorage.setItem('guest_id', myGuestId);
-      }
-      currentUser = null;
+      console.warn('⚠️ 未登录，跳转到登录页');
+      window.location.href = 'index.html';
+      return;
     }
   }
   fetchCurrentUser();
 
-  // ========== 工具函数 ==========
   function showToast(msg) {
     let t = document.getElementById('toast');
     t.innerText = msg; t.classList.add('show');
@@ -242,7 +236,6 @@
     else emailArea.innerText = '';
   }
 
-  // ========== 游戏核心 ==========
   function checkWinWithLine(row, col, player) {
     return Rules.checkWinWithLine(row, col, player, window.GAME.board, BOARD_SIZE);
   }
@@ -258,18 +251,25 @@
     window.GAME.gameSaved = false;
   }
 
-  // ========== 绘制 ==========
   function drawBoard(drawLastMark) {
     if (drawLastMark === undefined) drawLastMark = !isProMode;
+    
+    const stoneSkinName = localStorage.getItem('stoneSkin') || 'default';
+    const boardSkinName = localStorage.getItem('boardSkin') || 'default';
+    const stoneSkin = window.STONE_SKINS?.[stoneSkinName] || STONE_SKINS?.default || {};
+    const boardSkin = window.BOARD_SKINS?.[boardSkinName] || BOARD_SKINS?.default || {};
+
     const lastMove = window.GAME.moveHistory.length > 0 ? window.GAME.moveHistory[window.GAME.moveHistory.length - 1] : null;
     Goban.drawBoard(ctx, window.GAME.board, {
-      lastMove: lastMove,
-      winLines: window.GAME.winLines,
-      forbiddenLines: window.GAME.forbiddenLines,
-      drawLastMark: drawLastMark,
-      boardSize: BOARD_SIZE,
-      margin: MARGIN,
-      stoneRadius: stoneRadius
+        lastMove: lastMove,
+        winLines: window.GAME.winLines,
+        forbiddenLines: window.GAME.forbiddenLines,
+        drawLastMark: drawLastMark,
+        boardSize: BOARD_SIZE,
+        margin: MARGIN,
+        stoneRadius: stoneRadius,
+        stoneSkin: stoneSkin,
+        boardSkin: boardSkin
     });
   }
 
@@ -298,7 +298,6 @@
     requestAnimationFrame(frame);
   }
 
-  // ==================== 广播 ====================
   async function broadcastToAll(msg, exceptId) {
     if (msg.type === 'move') {
       await supabaseClient.from('rooms').update({
@@ -313,14 +312,16 @@
     }
   }
 
-  // ==================== 战绩保存 ====================
   async function saveGameResult() {
     if (window.GAME.gameSaved) return;
     if (!window.GAME.moveHistory || window.GAME.moveHistory.length === 0) return;
     if (!window.GAME.gameOver) return;
+    if (!currentUser) {
+      console.warn('⚠️ 未登录，跳过保存');
+      return;
+    }
 
     window.GAME.gameSaved = true;
-    await fetchCurrentUser();
 
     let blackName = window.GAME.allMembers.get(window.GAME.lobbySeats.black)?.name || '黑方';
     let whiteName = window.GAME.allMembers.get(window.GAME.lobbySeats.white)?.name || '白方';
@@ -333,27 +334,26 @@
       result = 'forbidden';
     }
 
-    const uid = currentUser ? currentUser.id : null;
-    const gid = currentUser ? null : myGuestId;
-
     try {
       await supabaseClient.from('games').insert({
+        user_id: currentUser.id,
         room_id: window.GAME.roomId || 'online_' + Date.now(),
         game_mode: window.GAME.roomGameMode || 'casual',
         black_player: blackName,
         white_player: whiteName,
         winner: result,
-        moves: window.GAME.moveHistory,
-        user_id: uid,
-        guest_id: gid
+        moves: window.GAME.moveHistory
       });
       console.log('战绩已保存');
+      const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString();
+      await supabaseClient.from('games').delete()
+        .lt('created_at', threeDaysAgo)
+        .eq('user_id', currentUser.id);
     } catch (e) {
       console.error('保存战绩失败:', e);
     }
   }
 
-  // ==================== 游戏结束 ====================
   function endGame(winningPlayer, reason) {
     window.GAME.gameOver = true;
     window.GAME.winner = winningPlayer;
@@ -413,7 +413,6 @@
     }, 3500);
   }
 
-  // ========== 构建上下文 ==========
   function buildContext() {
     return {
       state: window.GAME,
@@ -436,7 +435,6 @@
     };
   }
 
-  // ========== 包装函数 ==========
   function requestSeat(targetSeat) {
     const context = buildContext();
     SupabaseNetwork.requestSeat(context, targetSeat);
@@ -478,7 +476,6 @@
     window.Core.tryPlaceOnline(row, col, context);
   }
 
-  // ========== 返回大厅 ==========
   function goToHall() {
     if (window.roomChannel) {
       try { window.roomChannel.unsubscribe(); } catch(e) {}
@@ -489,7 +486,6 @@
     window.location.href = 'index.html';
   }
 
-  // ========== 事件绑定（已移除 playBgMusic 调用） ==========
   document.getElementById('createRoomBtn').onclick = () => {
     const context = buildContext();
     SupabaseNetwork.createRoom(context);
@@ -525,7 +521,6 @@
     if (!document.getElementById('gameScreen').classList.contains('hidden')) drawBoard();
   });
 
-  // ==================== 初始化 ====================
   initAudio();
 
   updateEntryDisplay();

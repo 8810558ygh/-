@@ -8,6 +8,7 @@
   <script src="goban.js"></script>
   <script src="rules.js"></script>
   <script src="audio.js"></script>
+  <script src="skins.js"></script>
   <link rel="stylesheet" href="music-player.css">
   <script src="music-player.js"></script>
   <style>
@@ -186,19 +187,28 @@
       }
     }
 
-    function drawBoard(drawLastMark) {
-      if (drawLastMark === undefined) drawLastMark = !isProMode;
-      const lastMove = moveHistory.length > 0 ? moveHistory[moveHistory.length - 1] : null;
-      Goban.drawBoard(ctx, board, {
+   function drawBoard(drawLastMark) {
+    if (drawLastMark === undefined) drawLastMark = !isProMode;
+    
+    // ===== 读取皮肤 =====
+    const stoneSkinName = localStorage.getItem('stoneSkin') || 'default';
+    const boardSkinName = localStorage.getItem('boardSkin') || 'default';
+    const stoneSkin = window.STONE_SKINS?.[stoneSkinName] || STONE_SKINS?.default || {};
+    const boardSkin = window.BOARD_SKINS?.[boardSkinName] || BOARD_SKINS?.default || {};
+
+    const lastMove = moveHistory.length > 0 ? moveHistory[moveHistory.length - 1] : null;
+    Goban.drawBoard(ctx, board, {
         lastMove: lastMove,
         winLines: winLines,
         forbiddenLines: forbiddenLines,
         drawLastMark: drawLastMark,
         boardSize: BOARD_SIZE,
         margin: MARGIN,
-        stoneRadius: stoneRadius
-      });
-    }
+        stoneRadius: stoneRadius,
+        stoneSkin: stoneSkin,
+        boardSkin: boardSkin
+    });
+}
 
     function animateLines(lines, isForbidden, onComplete) {
       let startTime = null;
