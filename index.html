@@ -44,6 +44,7 @@
     .top-left, .top-right { display: flex; gap: 8px; align-items: center; }
 
     .mail-btn {
+      position: relative;
       background: rgba(200, 160, 100, 0.2);
       border: 1px solid #e9bc6e;
       border-radius: 40px;
@@ -58,6 +59,47 @@
     }
     .mail-btn:hover { background: rgba(200, 160, 100, 0.35); }
 
+    .mail-badge {
+      position: absolute;
+      top: -6px;
+      right: -8px;
+      background: #ff3b30;
+      color: #fff;
+      border-radius: 50%;
+      font-size: 0.65rem;
+      font-weight: bold;
+      padding: 0 5px;
+      min-width: 18px;
+      height: 18px;
+      line-height: 18px;
+      text-align: center;
+      box-shadow: 0 0 6px rgba(255, 59, 48, 0.5);
+      pointer-events: none;
+      transition: transform 0.15s;
+      display: none;
+    }
+    .mail-badge.show {
+      display: inline-block;
+    }
+
+    /* 皮肤按钮（顶部） */
+    .skin-top-btn {
+      background: rgba(200, 160, 100, 0.2);
+      border: 1px solid #e9bc6e;
+      border-radius: 40px;
+      padding: 4px 10px;
+      cursor: pointer;
+      font-size: 1.1rem;
+      color: #ecd9b4;
+      transition: 0.2s;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+    }
+    .skin-top-btn:hover {
+      background: rgba(200, 160, 100, 0.35);
+    }
+
     .avatar-wrapper { position: relative; cursor: pointer; display: flex; align-items: center; gap: 8px; }
     .avatar-img { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 2px solid #e9bc6e; background: #3d2e1f; transition: all 0.2s; }
     .avatar-img:hover { transform: scale(1.05); box-shadow: 0 0 12px rgba(233, 188, 110, 0.4); }
@@ -66,9 +108,6 @@
 
     .settings-btn { background: rgba(200, 160, 100, 0.2); border: 1px solid #e9bc6e; border-radius: 40px; padding: 4px 12px; cursor: pointer; font-size: 0.8rem; color: #ecd9b4; transition: 0.2s; white-space: nowrap; }
     .settings-btn:hover { background: rgba(200, 160, 100, 0.35); }
-    .conn-mode-badge { font-family: monospace; background: #2a2013; padding: 4px 10px; border-radius: 32px; letter-spacing: 1px; border: 1px solid #bd9a60; font-size: 0.7rem; color: #e9bc6e; white-space: nowrap; }
-    .conn-mode-badge.p2p { border-color: #e0816b; color: #e0816b; }
-    .conn-mode-badge.supa { border-color: #6c9fd1; color: #6c9fd1; }
 
     .friend-drawer {
       position: fixed; top: 60px; left: 0; bottom: 0; width: 64px;
@@ -191,21 +230,6 @@
     .setting-option.selected .setting-check { background: #f5c542; border-color: #f5c542; }
     .setting-option.selected .setting-check::after { content: '✓'; color: #1e160c; font-weight: bold; font-size: 0.8rem; }
 
-    .skin-entry-btn {
-      background: rgba(200, 160, 100, 0.15);
-      border: 1px solid #e9bc6e;
-      border-radius: 40px;
-      padding: 6px 16px;
-      cursor: pointer;
-      font-size: 0.85rem;
-      color: #ecd9b4;
-      transition: 0.2s;
-      width: 100%;
-      margin-top: 8px;
-      font-family: inherit;
-    }
-    .skin-entry-btn:hover { background: rgba(200, 160, 100, 0.3); }
-
     .avatar-preview-modal .modal-content { max-width: 340px; padding: 32px 24px; }
     .avatar-preview-large { width: 120px; height: 120px; border-radius: 50%; object-fit: cover; border: 3px solid #e9bc6e; background: #3d2e1f; margin: 0 auto 16px; display: block; }
     .avatar-preview-placeholder-large { width: 120px; height: 120px; border-radius: 50%; background: linear-gradient(145deg, #c89d60, #8f6a30); display: flex; align-items: center; justify-content: center; font-size: 3rem; border: 3px solid #e9bc6e; color: #1e160c; font-weight: bold; margin: 0 auto 16px; }
@@ -240,7 +264,7 @@
       .top-bar { height: 50px; padding: 0 10px; }
       .settings-btn { padding: 3px 8px; font-size: 0.7rem; }
       .mail-btn { padding: 3px 8px; font-size: 1rem; }
-      .conn-mode-badge { padding: 3px 6px; font-size: 0.6rem; }
+      .skin-top-btn { padding: 3px 8px; font-size: 1rem; }
       .avatar-img, .avatar-placeholder { width: 34px; height: 34px; }
       .avatar-nick { display: none; }
       .friend-drawer { top: 50px; width: 56px; }
@@ -256,7 +280,16 @@
       .friend-drawer:not(.open) .friend-item .avatar-small { width: 36px; height: 36px; }
       #hallScreen { padding-left: 64px; }
       .mail-btn { font-size: 0.9rem; padding: 2px 6px; }
+      .skin-top-btn { font-size: 0.9rem; padding: 2px 6px; }
       .friend-drawer-header .add-btn { font-size: 0.7rem; padding: 2px 8px; }
+      .mail-badge {
+        min-width: 16px;
+        height: 16px;
+        line-height: 16px;
+        font-size: 0.55rem;
+        top: -4px;
+        right: -6px;
+      }
     }
   </style>
 </head>
@@ -322,8 +355,14 @@
       </div>
     </div>
     <div class="top-right">
-      <div class="conn-mode-badge" id="connModeBadge">☁️ Supabase云端</div>
-      <a href="mail.html" class="mail-btn" title="邮件">✉️</a>
+      <!-- 音乐播放器由 music-player.js 动态注入 -->
+      <!-- 皮肤中心按钮 -->
+      <a href="skins.html" class="skin-top-btn" title="皮肤中心">🎨</a>
+      <!-- 邮件 -->
+      <a href="mail.html" class="mail-btn" title="邮件">
+        ✉️ <span id="mailBadge" class="mail-badge">0</span>
+      </a>
+      <!-- 设置 -->
       <div class="settings-btn" onclick="openSettings()">⚙️ 设置</div>
     </div>
   </div>
@@ -363,7 +402,7 @@
   </div>
 </div>
 
-<!-- ===== 设置弹窗 ===== -->
+<!-- ===== 设置弹窗（已移除皮肤中心） ===== -->
 <div id="settingsModal" class="modal">
   <div class="modal-content">
     <div class="modal-title">⚙️ 游戏设置</div>
@@ -397,8 +436,7 @@
       </div>
       <div class="setting-check"></div>
     </div>
-    <div class="setting-group-title">🎨 外观</div>
-    <button class="skin-entry-btn" onclick="window.location.href='skins.html'">🎨 皮肤中心</button>
+    <!-- 皮肤中心入口已移除 -->
     <button class="modal-close-btn" onclick="closeSettings()">确定</button>
   </div>
 </div>
@@ -460,6 +498,10 @@
   let gameMode = localStorage.getItem('gameMode') || 'casual';
   let myAvatarUrl = localStorage.getItem('goavatar') || null;
 
+  // 邮件未读徽标相关
+  let mailBadgeTimer = null;
+  let mailChannel = null;
+
   async function initSupabase() {
     if (!window.supabase) { showToast('Supabase 库加载失败'); return; }
     supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -476,6 +518,7 @@
         await loadUserProfile(session.user);
       } else if (event === 'SIGNED_OUT') {
         currentUser = null;
+        cleanupMailBadge();
         showLoginScreen();
       }
     });
@@ -498,6 +541,8 @@
     }
     updateAvatarUI();
     showHallScreen();
+    // 启动邮件未读徽标更新
+    startMailBadgeUpdates();
   }
 
   function updateAvatarUI() {
@@ -597,6 +642,7 @@
   }
 
   async function logout() {
+    cleanupMailBadge();
     if (supabase) await supabase.auth.signOut();
     currentUser = null;
     myNick = '棋手';
@@ -617,16 +663,13 @@
     document.getElementById('authForms').classList.remove('hidden');
     document.getElementById('loginEmail').value = '';
     document.getElementById('loginPassword').value = '';
-    // 隐藏好友抽屉
     document.getElementById('friendDrawer').classList.add('hidden');
   }
 
   function showHallScreen() {
     document.getElementById('loginScreen').classList.add('hidden');
     document.getElementById('hallScreen').classList.remove('hidden');
-    // 显示好友抽屉
     document.getElementById('friendDrawer').classList.remove('hidden');
-    updateConnBadge();
     if (currentUser) {
       document.getElementById('userInfoBar').classList.remove('hidden');
       document.getElementById('authForms').classList.add('hidden');
@@ -634,17 +677,6 @@
     }
     if (typeof Friends !== 'undefined' && currentUser && supabase) {
       Friends.init(supabase, currentUser);
-    }
-  }
-
-  function updateConnBadge() {
-    let badge = document.getElementById('connModeBadge');
-    if (connMode === 'p2p') {
-      badge.innerText = '🔗 P2P直连';
-      badge.className = 'conn-mode-badge p2p';
-    } else {
-      badge.innerText = '☁️ Supabase云端';
-      badge.className = 'conn-mode-badge supa';
     }
   }
 
@@ -665,7 +697,6 @@
     connMode = mode;
     localStorage.setItem('connMode', connMode);
     updateSettingsUI();
-    updateConnBadge();
     showToast('已切换为 ' + (mode === 'p2p' ? 'P2P直连' : 'Supabase云端'));
   }
   function selectGameMode(mode) {
@@ -743,6 +774,95 @@
     setTimeout(() => t.classList.remove('show'), 2500);
   }
 
+  // ========== 邮件未读徽标功能 ==========
+  async function updateMailBadge() {
+    const badge = document.getElementById('mailBadge');
+    if (!currentUser || !supabase) {
+      badge.classList.remove('show');
+      return;
+    }
+    try {
+      const { count, error } = await supabase
+        .from('mails')
+        .select('*', { count: 'exact', head: true })
+        .or(`recipient_type.eq.all,and(recipient_type.eq.user,user_id.eq.${currentUser.id})`)
+        .eq('read', false);
+
+      if (error) {
+        console.warn('查询未读邮件失败:', error);
+        return;
+      }
+
+      if (count > 0) {
+        badge.textContent = count > 99 ? '99+' : count;
+        badge.classList.add('show');
+      } else {
+        badge.classList.remove('show');
+      }
+    } catch (e) {
+      console.error('更新邮件徽标异常:', e);
+    }
+  }
+
+  function subscribeMailUpdates() {
+    if (mailChannel) {
+      supabase.removeChannel(mailChannel);
+      mailChannel = null;
+    }
+    if (!currentUser || !supabase) return;
+
+    mailChannel = supabase
+      .channel('mail-badge-channel')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'mails',
+          filter: `recipient_type=eq.all`,
+        },
+        () => updateMailBadge()
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'mails',
+          filter: `recipient_type=eq.user AND user_id=eq.${currentUser.id}`,
+        },
+        () => updateMailBadge()
+      )
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          console.log('📬 邮件实时订阅已开启');
+        }
+      });
+  }
+
+  function startMailBadgeUpdates() {
+    if (mailBadgeTimer) {
+      clearInterval(mailBadgeTimer);
+      mailBadgeTimer = null;
+    }
+    updateMailBadge();
+    mailBadgeTimer = setInterval(updateMailBadge, 30000);
+    subscribeMailUpdates();
+  }
+
+  function cleanupMailBadge() {
+    if (mailBadgeTimer) {
+      clearInterval(mailBadgeTimer);
+      mailBadgeTimer = null;
+    }
+    if (mailChannel) {
+      supabase.removeChannel(mailChannel);
+      mailChannel = null;
+    }
+    document.getElementById('mailBadge').classList.remove('show');
+  }
+
+  // ========== 启动 ==========
   document.addEventListener('DOMContentLoaded', initSupabase);
 </script>
 </body>

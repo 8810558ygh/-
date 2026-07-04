@@ -49,6 +49,35 @@
     .mail-body .sender-type-tag.system { background: rgba(245, 197, 66, 0.15); color: #f5c542; border: 1px solid rgba(245, 197, 66, 0.3); }
     .mail-body .sender-type-tag.user { background: rgba(108, 159, 209, 0.15); color: #6c9fd1; border: 1px solid rgba(108, 159, 209, 0.3); }
 
+    /* 邮件操作行（删除按钮） */
+    .mail-actions-row {
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+      margin-top: 12px;
+      border-top: 1px solid #5e4a31;
+      padding-top: 12px;
+      flex-wrap: wrap;
+    }
+    .mail-actions-row .delete-btn {
+      background: rgba(248, 113, 113, 0.15);
+      border: 1px solid #f87171;
+      color: #f87171;
+      padding: 4px 14px;
+      border-radius: 20px;
+      cursor: pointer;
+      font-size: 0.8rem;
+      transition: 0.2s;
+      font-family: inherit;
+    }
+    .mail-actions-row .delete-btn:hover:not(:disabled) {
+      background: rgba(248, 113, 113, 0.3);
+    }
+    .mail-actions-row .delete-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
     .friend-request-actions { display: flex; gap: 12px; margin-top: 12px; flex-wrap: wrap; }
     .friend-request-actions .btn-accept { background: linear-gradient(145deg, #4ade80, #22a65a); border: none; padding: 8px 24px; border-radius: 30px; font-weight: bold; color: #1e160c; cursor: pointer; font-size: 0.95rem; transition: 0.2s; }
     .friend-request-actions .btn-accept:hover { transform: scale(1.02); filter: brightness(1.1); }
@@ -333,35 +362,29 @@
     </div>
   </div>
 
-  <!-- ===== 写邮件模态框（默认隐藏，点击按钮才弹出） ===== -->
+  <!-- ===== 写邮件模态框 ===== -->
   <div id="writeMailModal">
     <div class="modal-content">
       <div class="modal-title">✏️ 写邮件</div>
-
-      <!-- 收件人选择区域（由 JS 动态填充） -->
       <div id="recipientSection">
         <label id="recipientLabel">收件人</label>
         <div id="recipientContent"></div>
       </div>
-
       <label>主题</label>
       <input type="text" id="mailSubjectInput" placeholder="邮件主题">
-
       <label>内容</label>
       <textarea id="mailContentInput" placeholder="邮件正文..."></textarea>
-
       <button class="send-btn" onclick="sendUserMail()">📤 发送邮件</button>
       <button class="modal-close-btn" onclick="closeWriteMail()">取消</button>
     </div>
   </div>
 
-  <!-- ===== 管理员面板（只有管理员可见） ===== -->
+  <!-- ===== 管理员面板 ===== -->
   <div id="adminPanel" class="admin-panel hidden">
     <div class="panel-title">
       📨 发送系统邮件
       <span class="badge-admin">管理员</span>
     </div>
-
     <div class="form-row">
       <div class="form-group">
         <label for="recipientType">接收方式</label>
@@ -376,16 +399,12 @@
         <div class="hint-text">在 Supabase → Authentication → Users 中查看</div>
       </div>
     </div>
-
     <label for="senderName">发件人名称</label>
     <input type="text" id="senderName" placeholder="如：系统管理员" value="系统通知">
-
     <label for="mailSubject">主题</label>
     <input type="text" id="mailSubject" placeholder="邮件主题">
-
     <label for="mailContent">内容</label>
     <textarea id="mailContent" placeholder="邮件正文..."></textarea>
-
     <button class="send-btn" onclick="sendSystemMail()">📤 发送系统邮件</button>
   </div>
 </div>
@@ -399,6 +418,7 @@
   let isAdmin = false;
   let selectedRecipient = null;
 
+  // ========== 初始化 ==========
   async function init() {
     if (!window.supabase) {
       showToast('Supabase 库加载失败');
@@ -447,6 +467,7 @@
     }
   }
 
+  // ========== 加载邮件 ==========
   async function loadMails() {
     const { data, error } = await supabase
       .from('mails')
@@ -462,6 +483,7 @@
     updateUnreadBadge(data || []);
   }
 
+  // ========== 渲染邮件列表 ==========
   function renderMails(mails) {
     const container = document.getElementById('mailList');
     if (mails.length === 0) {
@@ -488,6 +510,10 @@
       const isFriendRequest = mail.friend_request_id && mail.recipient_type === 'user';
       const isRoomInvite = mail.subject && mail.subject.includes('邀请你加入游戏房间');
 
+      // 删除按钮：系统邮件禁用，其他邮件可删除
+      const deleteDisabled = isSystem ? 'disabled' : '';
+      const deleteText = isSystem ? '📌 系统邮件' : '🗑️ 删除';
+
       html += `
         <div class="mail-item ${unreadClass}" data-id="${mail.id}" data-friend-request="${mail.friend_request_id || ''}">
           <div class="mail-summary" onclick="toggleMail(this.parentElement)">
@@ -505,12 +531,18 @@
             ${isFriendRequest ? '<div id="friend-actions-' + mail.id + '" class="friend-request-actions"></div>' : ''}
             ${isRoomInvite ? renderRoomInviteButtons(mail) : ''}
             <div class="read-status">${mail.read ? '✅ 已读' : '📬 未读'}</div>
+            <div class="mail-actions-row">
+              <button class="delete-btn" onclick="deleteMail('${mail.id}', '${mail.sender_type}')" ${deleteDisabled}>
+                ${deleteText}
+              </button>
+            </div>
           </div>
         </div>
       `;
     });
     container.innerHTML = html;
 
+    // 加载好友申请状态
     document.querySelectorAll('[data-friend-request]').forEach(el => {
       const requestId = el.dataset.friendRequest;
       const mailId = el.dataset.id;
@@ -521,22 +553,47 @@
   }
 
   // ============================================================
-  // 写邮件功能（点击按钮弹出模态框）
+  // 删除邮件功能（系统邮件不可删除）
+  // ============================================================
+  async function deleteMail(mailId, senderType) {
+    if (senderType === 'system') {
+      showToast('系统邮件不可删除');
+      return;
+    }
+    if (!confirm('确定要删除这封邮件吗？')) return;
+
+    try {
+      const { error } = await supabase
+        .from('mails')
+        .delete()
+        .eq('id', mailId);
+
+      if (error) {
+        showToast('删除失败: ' + error.message);
+        return;
+      }
+      showToast('邮件已删除');
+      await loadMails(); // 刷新列表
+    } catch (e) {
+      console.error('删除异常:', e);
+      showToast('删除失败');
+    }
+  }
+
+  // ============================================================
+  // 写邮件功能
   // ============================================================
 
   async function openWriteMail() {
     const modal = document.getElementById('writeMailModal');
     const container = document.getElementById('recipientContent');
 
-    // 清空表单
     document.getElementById('mailSubjectInput').value = '';
     document.getElementById('mailContentInput').value = '';
     selectedRecipient = null;
 
-    // 显示模态框
     modal.classList.add('show');
 
-    // 根据用户类型渲染收件人选择
     if (isAdmin) {
       document.getElementById('recipientLabel').textContent = '收件人';
       container.innerHTML = `
