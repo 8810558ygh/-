@@ -5,7 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes">
   <title>东南大学 · 五子棋对弈</title>
   <script src="app-navigation.js?v=3"></script>
-  <link rel="stylesheet" href="style.css">
+  <script src="mobile-board-input.js?v=2"></script>
+  <link rel="stylesheet" href="style.css?v=9">
   <script src="goban.js"></script>
   <script src="rules.js"></script>
   <script src="audio.js"></script>
@@ -64,7 +65,7 @@
     }
   </style>
 </head>
-<body>
+<body class="gameplay-page">
 
 <div class="top-bar">
   <div class="logo">⚫ 东南五子 · 弈 ⚪</div>
@@ -145,8 +146,10 @@
     let moveHistory = [];
     let winLines = [];
     let forbiddenLines = [];
+    let boardInput = null;
 
     function initBoard() {
+      if (boardInput) boardInput.clear();
       board = Rules.initBoard(BOARD_SIZE);
       currentPlayer = 1;
       gameOver = false;
@@ -468,21 +471,20 @@
     // =====================================================
 
     function handleCanvasClick(e) {
-      if (gameOver) return;
-
-      const rect = canvas.getBoundingClientRect();
-      const scale = canvas.width / rect.width;
-      const mx = (e.clientX - rect.left) * scale;
-      const my = (e.clientY - rect.top) * scale;
-      const col = Math.round((mx - MARGIN) / CELL_SIZE);
-      const row = Math.round((my - MARGIN) / CELL_SIZE);
-      if (row >= 0 && row < BOARD_SIZE && col >= 0 && col < BOARD_SIZE) {
-        placePiece(row, col);
-      }
+      boardInput.handleClick(e);
     }
 
     initAudio();
 
+    boardInput = MobileBoardInput.attach({
+      canvas: canvas,
+      boardSize: BOARD_SIZE,
+      margin: MARGIN,
+      cellSize: CELL_SIZE,
+      canSelect: function() { return !gameOver; },
+      canPlace: function(row, col) { return board[row][col] === 0; },
+      onPlace: function(row, col) { return placePiece(row, col); }
+    });
     canvas.addEventListener('click', handleCanvasClick);
     restartBtn.addEventListener('click', function() {
       if (!gameOver && moveHistory.length > 0) {

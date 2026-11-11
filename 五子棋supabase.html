@@ -5,7 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>东南五子 · 云端对弈</title>
   <script src="app-navigation.js?v=3"></script>
-  <link rel="stylesheet" href="style.css">
+  <script src="mobile-board-input.js?v=2"></script>
+  <link rel="stylesheet" href="style.css?v=9">
   <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
   <script src="goban.js"></script>
   <script src="rules.js"></script>
@@ -37,7 +38,7 @@
     }
   </style>
 </head>
-<body>
+<body class="gameplay-page">
 
 <div id="toast" class="toast"></div>
 <div class="top-bar">
@@ -103,7 +104,7 @@
       <div class="board-wrap">
         <div id="turnReminder" class="turn-reminder">⏳ 等待对局开始...</div>
         <canvas id="gobanCanvas" width="800" height="800"></canvas>
-        <div style="display: flex; justify-content: center; gap: 15px; margin-top: 15px;">
+        <div class="board-actions">
           <button class="game-btn" id="btnSurrender" onclick="sendSurrender()">🏳️ 投降</button>
           <button class="game-btn" id="btnDraw" onclick="sendDrawRequest()">🤝 平局</button>
         </div>
@@ -504,18 +505,30 @@
     } else showToast('输入房间码');
   };
 
-  canvas.addEventListener('click', (e) => {
-    if (!window.GAME.gameStarted || window.GAME.gameOver) return;
-    let rect = canvas.getBoundingClientRect();
-    let scale = canvas.width / rect.width;
-    let mx = (e.clientX - rect.left) * scale;
-    let myY = (e.clientY - rect.top) * scale;
-    let col = Math.round((mx - MARGIN) / CELL_SIZE);
-    let row = Math.round((myY - MARGIN) / CELL_SIZE);
-    if (row >= 0 && row < BOARD_SIZE && col >= 0 && col < BOARD_SIZE && window.GAME.board[row][col] === 0) {
-      tryPlace(row, col);
-    }
+  const boardInput = MobileBoardInput.attach({
+    canvas: canvas,
+    boardSize: BOARD_SIZE,
+    margin: MARGIN,
+    cellSize: CELL_SIZE,
+    canSelect: function() { return window.GAME.gameStarted && !window.GAME.gameOver; },
+    canPlace: function(row, col) {
+      const seat = window.GAME.mySeat;
+      const myColor = seat === 'black' ? 1 : (seat === 'white' ? 2 : null);
+      return myColor !== null
+        && myColor === window.GAME.currentPlayer
+        && window.GAME.board[row][col] === 0;
+    },
+    onPlace: function(row, col) { return tryPlace(row, col); },
+    onBlocked: function() {
+      const seat = window.GAME.mySeat;
+      const myColor = seat === 'black' ? 1 : (seat === 'white' ? 2 : null);
+      if (myColor !== null && myColor !== window.GAME.currentPlayer) {
+        showToast('请等待对方落子');
+      }
+    },
+    onMiss: function() { showToast('请点击棋盘交叉点'); }
   });
+  canvas.addEventListener('click', (e) => boardInput.handleClick(e));
 
   window.addEventListener('resize', () => {
     if (!document.getElementById('gameScreen').classList.contains('hidden')) drawBoard();

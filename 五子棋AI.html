@@ -5,7 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>东南五子 · 人机对弈</title>
   <script src="app-navigation.js?v=3"></script>
-  <link rel="stylesheet" href="style.css">
+  <script src="mobile-board-input.js?v=2"></script>
+  <link rel="stylesheet" href="style.css?v=9">
   <script src="goban.js"></script>
   <script src="rules.js"></script>
   <script src="ai.js"></script>
@@ -68,7 +69,7 @@
     }
   </style>
 </head>
-<body>
+<body class="gameplay-page">
 
 <div id="toast" class="toast"></div>
 
@@ -277,6 +278,7 @@
   let winLines = [];
   let forbiddenLines = [];
   let aiThinking = false;
+  let boardInput = null;
 
   // ===================== AI 学习系统 =====================
   const LEARN_KEY = 'gomoku_ai_learn';
@@ -385,6 +387,7 @@
   }
 
   function initGame() {
+    if (boardInput) boardInput.clear();
     gameSaved = false;
     board = Rules.initBoard(BOARD_SIZE);
     currentPlayer = 1;
@@ -691,16 +694,24 @@
   }
 
   // ===================== 事件绑定 =====================
-  canvas.addEventListener('click', (e) => {
-    if (gameOver || aiThinking) return;
-    let rect = canvas.getBoundingClientRect();
-    let scale = canvas.width / rect.width;
-    let mx = (e.clientX - rect.left) * scale;
-    let myY = (e.clientY - rect.top) * scale;
-    let col = Math.round((mx - MARGIN) / CELL_SIZE);
-    let row = Math.round((myY - MARGIN) / CELL_SIZE);
-    if (row >= 0 && row < BOARD_SIZE && col >= 0 && col < BOARD_SIZE) playerMove(row, col);
+  boardInput = MobileBoardInput.attach({
+    canvas: canvas,
+    boardSize: BOARD_SIZE,
+    margin: MARGIN,
+    cellSize: CELL_SIZE,
+    canSelect: function() { return !gameOver && !aiThinking; },
+    canPlace: function(row, col) {
+      const playerNum = playerIsBlack ? 1 : 2;
+      return currentPlayer === playerNum && board[row][col] === 0;
+    },
+    onPlace: function(row, col) { return playerMove(row, col); },
+    onBlocked: function() {
+      const playerNum = playerIsBlack ? 1 : 2;
+      if (currentPlayer !== playerNum) showToast('请等待 AI 落子');
+    },
+    onMiss: function() { showToast('请点击棋盘交叉点'); }
   });
+  canvas.addEventListener('click', (e) => boardInput.handleClick(e));
 
   window.addEventListener('resize', () => drawBoard());
 
