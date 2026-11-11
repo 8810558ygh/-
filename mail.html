@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>东南五子 · 邮件</title>
+  <script src="app-navigation.js?v=3"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.min.js"></script>
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="music-player.css">
@@ -429,7 +430,7 @@
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
       showToast('请先登录');
-      setTimeout(() => window.location.href = 'index.html', 1500);
+      setTimeout(() => navigatePage('index.html'), 1500);
       return;
     }
     currentUser = session.user;
@@ -901,7 +902,7 @@
         params.set('join', roomCode);
         params.set('uid', currentUser.id);
         if (profile?.nickname) params.set('nick', profile.nickname);
-        window.location.href = '五子棋P2P.html?' + params.toString();
+        navigatePage('五子棋P2P.html?' + params.toString());
 
       } else if (action === 'reject') {
         await supabase.from('mails').update({ read: true }).eq('id', mailId);
@@ -1052,7 +1053,7 @@
   }
 
   function goToHall() {
-    window.location.href = 'index.html';
+    navigatePage('index.html');
   }
 
   document.addEventListener('DOMContentLoaded', init);

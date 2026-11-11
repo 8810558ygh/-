@@ -1,6 +1,6 @@
 // sw.js —— Service Worker 离线缓存
 
-const CACHE_NAME = 'gomoku-v4';
+const CACHE_NAME = 'gomoku-v6';
 
 // 所有需要离线缓存的文件列表
 const urlsToCache = [
@@ -12,6 +12,8 @@ const urlsToCache = [
   '五子棋战绩.html',
   'skins.html',
   'mail.html',
+  'app-navigation.js',
+  'app-navigation.css',
   'style.css',
   'goban.js',
   'rules.js',

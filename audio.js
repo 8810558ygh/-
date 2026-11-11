@@ -2,6 +2,14 @@
 
 let bgAudio = null;
 let isAudioInitialized = false;
+const IS_EMBEDDED_APP = (() => {
+  try {
+    return window.self !== window.top
+      || new URLSearchParams(window.location.search).get('embedded') === '1';
+  } catch (e) {
+    return true;
+  }
+})();
 
 // ========== 歌曲列表（按顺序播放） ==========
 const SONG_LIST = [
@@ -40,6 +48,7 @@ function getCurrentSongUrl() {
 
 // 初始化音频对象（不播放）
 function initAudio() {
+  if (IS_EMBEDDED_APP) return;
   if (isAudioInitialized) return;
   if (!bgAudio) {
     const songUrl = getCurrentSongUrl();

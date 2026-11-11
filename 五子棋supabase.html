@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>东南五子 · 云端对弈</title>
+  <script src="app-navigation.js?v=3"></script>
   <link rel="stylesheet" href="style.css">
   <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
   <script src="goban.js"></script>
@@ -15,7 +16,6 @@
   <link rel="stylesheet" href="music-player.css">
   <script src="music-player.js"></script>
   <script src="skins.js"></script>
-  <base target="_blank">
   <style>
     #gameScreen { padding-top: 80px; }
     .board-wrap { max-width: 820px; }
@@ -207,7 +207,7 @@
       localStorage.setItem('gobang_user_id', myUserId);
     } else {
       console.warn('⚠️ 未登录，跳转到登录页');
-      window.location.href = 'index.html';
+      navigatePage('index.html');
       return;
     }
   }
@@ -483,7 +483,7 @@
     if (window.presenceChannel) {
       try { window.presenceChannel.unsubscribe(); } catch(e) {}
     }
-    window.location.href = 'index.html';
+    navigatePage('index.html');
   }
 
   document.getElementById('createRoomBtn').onclick = () => {

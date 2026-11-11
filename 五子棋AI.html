@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>东南五子 · 人机对弈</title>
+  <script src="app-navigation.js?v=3"></script>
   <link rel="stylesheet" href="style.css">
   <script src="goban.js"></script>
   <script src="rules.js"></script>
@@ -149,7 +150,7 @@
 
 <script>
   window.goToHall = function() {
-    window.location.href = 'index.html';
+    navigatePage('index.html');
   };
 
   initAudio();
@@ -174,7 +175,7 @@
     } else {
       console.warn('⚠️ 未登录，无法保存战绩');
       // 跳转到登录页
-      window.location.href = 'index.html';
+      navigatePage('index.html');
       return;
     }
     supabaseClient.auth.onAuthStateChange((event, session) => {
@@ -183,7 +184,7 @@
         console.log('✅ 登录状态变化: 已登录', currentUser.id);
       } else if (event === 'SIGNED_OUT') {
         currentUser = null;
-        window.location.href = 'index.html';
+        navigatePage('index.html');
       }
     });
   }

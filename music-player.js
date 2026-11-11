@@ -2,7 +2,17 @@
 
 let panelOpen = false;
 
+function isEmbeddedApp() {
+  try {
+    return window.self !== window.top
+      || new URLSearchParams(window.location.search).get('embedded') === '1';
+  } catch (e) {
+    return true;
+  }
+}
+
 function initMusicPlayer() {
+  if (isEmbeddedApp()) return;
   if (document.querySelector('.music-player')) return;
 
   // 找到所有顶栏的 .top-right 容器
@@ -340,6 +350,7 @@ function updatePlayerUI(playBtn, toggleBtn, dot) {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
+  if (isEmbeddedApp()) return;
   if (typeof initAudio === 'function') {
     initAudio();
   }

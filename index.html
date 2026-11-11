@@ -4,8 +4,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>东南五子 · 弈府</title>
+  <script src="app-navigation.js?v=3"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.min.js"></script>
   <script src="audio.js"></script>
+  <link rel="stylesheet" href="app-navigation.css?v=3">
   <link rel="stylesheet" href="music-player.css">
   <script src="music-player.js"></script>
   <script src="avatar.js"></script>
@@ -357,11 +359,11 @@
     <div class="top-right">
       <!-- 音乐播放器由 music-player.js 动态注入 -->
       <!-- 皮肤中心按钮 -->
-      <a href="skins.html" class="skin-top-btn" title="皮肤中心">🎨</a>
+      <button type="button" class="skin-top-btn" title="皮肤中心" onclick="navigatePage('skins.html')">🎨</button>
       <!-- 邮件 -->
-      <a href="mail.html" class="mail-btn" title="邮件">
+      <button type="button" class="mail-btn" title="邮件" onclick="navigatePage('mail.html')">
         ✉️ <span id="mailBadge" class="mail-badge">0</span>
-      </a>
+      </button>
       <!-- 设置 -->
       <div class="settings-btn" onclick="openSettings()">⚙️ 设置</div>
     </div>
@@ -487,6 +489,10 @@
 
 <input type="file" class="file-input" id="avatarFileInput" accept="image/*" onchange="onAvatarFileSelected(event)">
 
+<div id="appShell" class="app-shell hidden" aria-hidden="true">
+  <div id="appShellViews" class="app-shell-views"></div>
+</div>
+
 <script>
   const SUPABASE_URL = 'https://txgemtxikpieaqcohglr.supabase.co';
   const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR4Z2VtdHhpa3BpZWFxY29oZ2xyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk4MDY1NTIsImV4cCI6MjA5NTM4MjU1Mn0.I0PHUfWmiDpBnfjmTBJ1u6ybzZzhsTG0uaLbKBrcN1c';
@@ -497,6 +503,7 @@
   let connMode = localStorage.getItem('connMode') || 'supabase';
   let gameMode = localStorage.getItem('gameMode') || 'casual';
   let myAvatarUrl = localStorage.getItem('goavatar') || null;
+  let appViewsPreloaded = false;
 
   // 邮件未读徽标相关
   let mailBadgeTimer = null;
@@ -541,6 +548,7 @@
     }
     updateAvatarUI();
     showHallScreen();
+    preloadAppViews();
     // 启动邮件未读徽标更新
     startMailBadgeUpdates();
   }
@@ -644,6 +652,8 @@
   async function logout() {
     cleanupMailBadge();
     if (supabase) await supabase.auth.signOut();
+    GomokuNavigation.resetViews();
+    appViewsPreloaded = false;
     currentUser = null;
     myNick = '棋手';
     myAvatarUrl = null;
@@ -733,7 +743,7 @@
   }
 
   function enterRecords() {
-    window.location.href = '五子棋战绩.html';
+    navigatePage('五子棋战绩.html');
   }
 
   function enterAIGame() {
@@ -742,7 +752,7 @@
     params.set('nickname', myNick);
     params.set('mode', gameMode);
     params.set('uid', currentUser.id);
-    window.location.href = '五子棋AI.html?' + params.toString();
+    navigatePage('五子棋AI.html?' + params.toString());
   }
 
   function enterLocalGame() {
@@ -751,7 +761,7 @@
     params.set('nick', myNick);
     params.set('mode', gameMode);
     params.set('uid', currentUser.id);
-    window.location.href = '五子棋.html?' + params.toString();
+    navigatePage('五子棋.html?' + params.toString());
   }
 
   function enterOnlineGame() {
@@ -761,9 +771,9 @@
     params.set('mode', gameMode);
     params.set('uid', currentUser.id);
     if (connMode === 'p2p') {
-      window.location.href = '五子棋P2P.html?' + params.toString();
+      navigatePage('五子棋P2P.html?' + params.toString());
     } else {
-      window.location.href = '五子棋supabase.html?' + params.toString();
+      navigatePage('五子棋supabase.html?' + params.toString());
     }
   }
 
@@ -863,6 +873,38 @@
   }
 
   // ========== 启动 ==========
+  function preloadAppViews() {
+    if (appViewsPreloaded) return;
+    appViewsPreloaded = true;
+    const routes = [
+      '五子棋.html',
+      '五子棋AI.html',
+      '五子棋P2P.html',
+      '五子棋supabase.html',
+      '五子棋战绩.html',
+      'mail.html',
+      'skins.html'
+    ];
+    const start = function () { GomokuNavigation.preload(routes); };
+    if (typeof requestIdleCallback === 'function') requestIdleCallback(start, { timeout: 1500 });
+    else setTimeout(start, 250);
+  }
+
+  GomokuNavigation.installShell({
+    containerId: 'appShell',
+    viewsId: 'appShellViews',
+    homeTitle: '东南五子 · 弈府',
+    titles: {
+      '五子棋.html': '东南五子 · 本地对弈',
+      '五子棋AI.html': '东南五子 · 人机对弈',
+      '五子棋P2P.html': '东南五子 · 远程对弈',
+      '五子棋supabase.html': '东南五子 · 云端对弈',
+      '五子棋战绩.html': '东南五子 · 战绩',
+      'mail.html': '东南五子 · 邮件',
+      'skins.html': '东南五子 · 皮肤中心'
+    }
+  });
+
   document.addEventListener('DOMContentLoaded', initSupabase);
 </script>
 </body>

@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>东南五子 · 战绩</title>
+  <script src="app-navigation.js?v=3"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.min.js"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Noto Serif SC', '楷体', 'KaiTi', serif; }
@@ -213,7 +214,6 @@
       .ctrl-btn { padding: 6px 12px; font-size: 0.8rem; }
     }
   </style>
-<base target="_blank">
 </head>
 <body>
 
@@ -298,7 +298,7 @@
       currentUser = session.user;
     } else {
       showToast('请先登录');
-      setTimeout(() => window.location.href = 'index.html', 1500);
+      setTimeout(() => navigatePage('index.html'), 1500);
       return;
     }
 
@@ -550,7 +550,7 @@
     };
     sessionStorage.setItem('gobang_replay_import', JSON.stringify(data));
     showToast('导入成功，跳转到本地对局...');
-    window.location.href = '五子棋.html?load=replay';
+    navigatePage('五子棋.html?load=replay');
   }
 
   function drawReplayBoard() {
@@ -614,7 +614,7 @@
   }
 
   function backToHall() {
-    window.location.href = 'index.html';
+    navigatePage('index.html');
   }
 
   function showToast(msg) {
